@@ -1,0 +1,4 @@
+[plugin.metrics.dice]
+command = "perl -e 'print join(qq!\t!,q!stats.saikoro!,int(rand(6)),time).qq!\n!'"
+
+

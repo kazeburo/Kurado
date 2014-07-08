@@ -1,0 +1,27 @@
+# kurodo_agent config
+
+# pluginの設定
+#
+# pluginは
+#  [plugin.metrics.${plugin_name}
+# として設定する。ドットの数は2つである必要がある
+#
+# pluginから以下の形式で出力する
+#
+# metrics:
+#   metrics.${name1}[.${name2}[.{gauge,counter,derive,absolute}]]\t${value}\t${timestamp}
+# meta:
+#   meta.${name1}[.${name2}\t${text}
+#
+# keyの最初がmetricsやmetaではない場合、"metrics"が追加される
+# keyの最後が .{gauge,..} 等でなかった場合は、gaugeが使われる
+#
+# metaはmetricsの付属情報としてDBに保存される。サーバ情報などに使われる。履歴は残らない
+#
+
+[plugin.metrics.process]
+command = "echo -e \"fork.derive\t\"$(cat /proc/stat |grep processes | awk '{print $2}')\"\t\"$(date +%s)"
+
+
+
+

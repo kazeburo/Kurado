@@ -1,0 +1,153 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use utf8;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use Getopt::Long;
+use Pod::Usage;
+
+use Proc::Pidfile;
+use Kurado::Agent;
+use Kurado::Agent::Util;
+use Kurado::Agent::MQ;
+use Kurado::Agent::Collector;
+use Kurado::Agent::Config;
+
+my $interval = 1;
+Getopt::Long::Configure ("no_ignore_case");
+GetOptions(
+    "self=s"     => \my $self_ip,
+    "conf-d=s"   => \my $config_dir,
+    "dump"       => \my $dump,
+    "mqtt=s"     => \my $mqtt,
+    "pidfile=s"   => \my $pidfile,
+    "interval|i=i" => \$interval,
+    "h|help"     => \my $help,
+    "v|version"  => \my $version,
+);
+
+if ( $version ) {
+    print "Kurado::Agent version $Kurado::Agent::VERSION\n";
+    print "Try `kurado_agent --help` for more options.\n\n";
+    exit 0;
+}
+
+if ( $help ) {
+    pod2usage(-verbose=>2,-exitval=>0);
+}
+
+my $plugins = {};
+if ( $config_dir ) {
+    eval {
+        my $conf = Kurado::Agent::Config->new($config_dir);
+        $plugins = $conf->plugins;
+    };
+    die "Failed to load config: $@\n" if $@;
+}
+
+my $collector = Kurado::Agent::Collector->new($plugins);
+
+if ( $dump ) {
+    print $collector->collect;
+    exit;
+}
+
+if ( !$self_ip || !$mqtt || !$interval) {
+    pod2usage(-verbose=>0,-exitval=>1);
+}
+
+my $pp;
+if ( $pidfile ) {
+    $pp = Proc::Pidfile->new( pidfile => $pidfile );
+}
+
+$0 = "kurado_agent master";
+supervisor(sub {
+    $0 = "kurado_agent";
+    my $mq = Kurado::Agent::MQ->new(server => $mqtt);
+    $self_ip =~ s/\./_/g; # mqtt replace "." to '/'
+    local $SIG{TERM}  = sub {
+        $mq->{stop_loop} = 1;
+    };
+    $mq->timetick_publisher(
+        $interval*60,
+        sub {
+            my $message = eval {
+                $collector->collect;
+            };
+            die "failed collect metrics: $@\n" if $@;
+            return ['kurado/update/'.$self_ip, $message];
+        }
+    );
+    exit();
+}, interval => 3);
+
+1;
+
+__END__
+
+=head1 NAME
+
+kurado_agent - Kurado agent
+
+=head1 SYNOPSIS
+
+  # dry-run 
+  % kurado_agent --dump
+  
+  # run 
+  % kurado_agent --interval 1 --self ip.address.of.myself --mqtt 127.0.0.1:1887 --conf-d /etc/kurado_agent/conf.d
+
+=head1 DESCRIPTION
+
+Kurado agent
+
+=head1 OPTIONS
+
+=over 4
+
+=item --conf-d
+
+path to config directory. files shuold be '*.toml' (optional)
+
+=item --interval
+
+interval minutes default 1 (60sec)
+
+=item --mqtt
+
+MQTT broker server
+
+=item --pidfile
+
+pidfile
+
+=item -v --version
+
+Display version
+
+=item -h --help
+
+Display help
+
+=back
+
+=head1 AUTHOR
+
+Masahiro Nagano <kazeburo {at} gmail.com>
+
+=head1 LICENSE
+
+This library is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+
+# Local Variables:
+# mode: cperl
+# End:
+
+
+
+
+
