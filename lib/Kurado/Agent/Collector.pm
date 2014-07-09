@@ -211,9 +211,11 @@ sub disk_usage {
             $mount_points{$2} =~ s![^A-Za-z0-9_-]!_!g;
         }
     }
+    return unless @mount_points;
     my ($result, $exit_code) = cap_cmd(['df',@mount_points]);
     die "failed to exec df\n" if $exit_code != 0;
     my $ret;
+    my @devices;
     for ( split /\n/, $result ) {
         chomp;chomp;
         my @d = split /\s+/, $_;
@@ -221,8 +223,9 @@ sub disk_usage {
         $self->metrics->{"disk-usage-".$mount_points{$d[5]}."-used.gauge"} = $d[2];
         $self->metrics->{"disk-usage-".$mount_points{$d[5]}."-available.gauge"} = $d[3];
         $self->meta->{"disk-usage-".$mount_points{$d[5]}."-mount"} = $d[5];
+        push @devices, $mount_points{$d[5]};
     }
-    return $ret;
+    $self->meta->{"disk-usage-devices"} = join ",", @devices if @devices;
 }
 
 sub translate_device_mapper {
@@ -242,6 +245,7 @@ sub translate_device_mapper {
 sub disk_io {
     my $self = shift;
     my @stats = glob '/sys/block/*/stat';
+    my @devices;
     for my $stat ( @stats ) {
         my ($device) = ( $stat =~ m!^/sys/block/(.+)/stat$! );
         open my $fh, '<', $stat or die "$!\n";
@@ -257,27 +261,32 @@ sub disk_io {
         # ios-in-prog tot-ticks rq-ticks 8..9
         next if $dstats[0] == 0 && $dstats[4] == 0;
         $device =~ s![^A-Za-z0-9_-]!_!g;
+        push @devices, $device;
         $self->metrics->{"disk-io-".$device."-read-ios.derive"} = $dstats[0];
         $self->metrics->{"disk-io-".$device."-read-sectors.derive"} = $dstats[2];
         $self->metrics->{"disk-io-".$device."-write-ios.derive"} = $dstats[4];
         $self->metrics->{"disk-io-".$device."-write-sectors.device"} = $dstats[6];
     }
+    $self->meta->{"disk-io-devices"} = join ",", @devices if @devices;
 }
 
 sub traffic {
     my $self = shift;
     open my $fh, '<', '/proc/net/dev' or die "$!\n";
+    my @interfaces;
     while (<$fh>) {
         if ( m!^\s+([^:]+):\s*(.*)$`! ) {
             my $interface = $1;
             my $stat = $2;
             next if $interface eq 'lo'; #skip loopback
             $interface =~ s![^A-Za-z0-9_-]!_!g;
+            push @interfaces, $interface;
             my @stats = split /\s+/, $stat;
             $self->metrics->{"traffic-${interface}-rxbytes.derive"} = $stats[0];
             $self->metrics->{"traffic-${interface}-txbytes.derive"} = $stats[8];
         }
     }
+    $self->meta->{"traffic-interfaces"} = join ",", @interfaces if @interfaces;
 }
 
 1;
