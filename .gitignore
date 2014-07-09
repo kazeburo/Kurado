@@ -1,2 +1,5 @@
 *~
 .vagrant/
+fatlib/
+fatpacker.trace
+packlists

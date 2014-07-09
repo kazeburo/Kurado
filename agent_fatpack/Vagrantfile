@@ -1,0 +1,30 @@
+# How to fatpack with Vagrant
+# vagrant >= 1.6.3 is required
+#
+# * fatpack build-perl
+#   $ cd author
+#   $ vagrant up --provision
+# 
+# * halt vm
+#   $ vagrant halt
+#
+# * retry fatpack
+#   $ vagrant up --provision
+#     or 
+#   $ vagrant reload --provision
+#
+
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "hashicorp/precise64"
+  config.vm.synced_folder "../", "/fatpack"
+  config.vm.provision "docker", run: "always" do |d|
+    d.build_image "/fatpack/agent_fatpack",
+      args: "-t fatpack"
+  end
+  # docker provisoner does not block until docker run is finished, so I use shell provisioner for docker run
+  config.vm.provision "shell", run: "always",
+    inline: "docker run -v /fatpack:/fatpack fatpack"
+  config.vm.provision "destroy", destroy: false, run: "always"
+end
