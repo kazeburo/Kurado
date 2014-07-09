@@ -280,7 +280,7 @@ sub traffic {
             my $interface = $1;
             my $stat = $2;
             next if $interface eq 'lo'; #skip loopback
-            next if $interface =~ m!:!; #skip vlan
+            next if $interface =~ m!\.!; #skip vlan
             next if $interface =~ m!^sit\d+$!; #ipv6 tunnel?
             $interface =~ s![^A-Za-z0-9_-]!_!g;
             push @interfaces, $interface;
