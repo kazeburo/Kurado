@@ -171,8 +171,8 @@ base.meta.version	Linux version 2.6.32-431.el6.x86_64 (mockbuild@c6b8.bsys.dev.c
 [plugin.metrics.process]command = "echo -e \"fork.derive\t\"$(cat /proc/stat |grep processes | awk '{print $2}')\"\t\"$(date +%s)"```
 
 pluginは```[plugin.metrics.${plugin_name}```として設定する。ドットの数は2つである必要がある
-pluginから以下の形式で出力する- metrics   ```metrics.${name1}[.${name2}[.{gauge,counter,derive,absolute}]]\t${value}\t${timestamp}```- meta
-   ```meta.${name1}[.${name2}\t${text}```keyの最初がmetricsやmetaではない場合、"metrics"が追加される。<br />keyの最後が .{gauge,..} 等でなかった場合は、gaugeが使われる。<br />metaはmetricsの付属情報としてDBに保存される。サーバ情報などに使われる。履歴は残らない
+pluginから以下の形式で出力する- metrics   `metrics.${name1}[.${name2}[.{gauge,counter,derive,absolute}]]\t${value}\t${timestamp}`- meta
+   `meta.${name1}[.${name2}\t${text}`keyの最初がmetricsやmetaではない場合、"metrics"が追加される。<br />keyの最後が .{gauge,..} 等でなかった場合は、gaugeが使われる。<br />metaはmetricsの付属情報としてDBに保存される。サーバ情報などに使われる。履歴は残らない
 
 上のprocess pluginの出力は
 
