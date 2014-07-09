@@ -5,7 +5,7 @@ use warnings;
 use utf8;
 use Kurado::Agent::Util;
 
-our @FUNC = qw/memory loadavg uptime sys_version processors cpu_usage tcp_established disk_usage disk_io/;
+our @FUNC = qw/memory loadavg uptime sys_version processors cpu_usage tcp_established disk_usage disk_io traffic/;
 
 sub new {
     my ($class, $plugins) = @_;
@@ -275,7 +275,7 @@ sub traffic {
     open my $fh, '<', '/proc/net/dev' or die "$!\n";
     my @interfaces;
     while (<$fh>) {
-        if ( m!^\s+([^:]+):\s*(.*)$`! ) {
+        if ( m!^\s+([^:]+):\s*(.*)$! ) {
             my $interface = $1;
             my $stat = $2;
             next if $interface eq 'lo'; #skip loopback

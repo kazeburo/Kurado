@@ -113,47 +113,52 @@ $ kurado_agent --interval 1 --self ip.address.of.myself --mqtt 127.0.0.1:1887 --
 tab切りで、`key[TAB]value[TAB]timestamp` 形式
 
 ```
-base.metrics.cpu-guest-nice.derive      0       1404871027
-base.metrics.cpu-guest.derive   0       1404871027
-base.metrics.cpu-idle.derive    5458133 1404871027
-base.metrics.cpu-iowait.derive  993     1404871027
-base.metrics.cpu-irq.derive     864     1404871027
-base.metrics.cpu-nice.derive    1       1404871027
-base.metrics.cpu-softirq.derive 887     1404871027
-base.metrics.cpu-steal.derive   0       1404871027
-base.metrics.cpu-system.derive  13294   1404871027
-base.metrics.cpu-user.derive    44508   1404871027
-base.metrics.disk-io-mapper_VolGroup-lv_root-read-ios.derive    38120   1404871027
-base.metrics.disk-io-mapper_VolGroup-lv_root-read-sectors.derive        1013354 1404871027
-base.metrics.disk-io-mapper_VolGroup-lv_root-write-ios.derive   311479  1404871027
-base.metrics.disk-io-mapper_VolGroup-lv_root-write-sectors.device       2459520 1404871027
-base.metrics.disk-io-mapper_VolGroup-lv_swap-read-ios.derive    409     1404871027
-base.metrics.disk-io-mapper_VolGroup-lv_swap-read-sectors.derive        3272    1404871027
-base.metrics.disk-io-mapper_VolGroup-lv_swap-write-ios.derive   630     1404871027
-base.metrics.disk-io-mapper_VolGroup-lv_swap-write-sectors.device       5040    1404871027
-base.metrics.disk-io-sda-read-ios.derive        24672   1404871027
-base.metrics.disk-io-sda-read-sectors.derive    1023620 1404871027
-base.metrics.disk-io-sda-write-ios.derive       43411   1404871027
-base.metrics.disk-io-sda-write-sectors.device   2464636 1404871027
-base.metrics.disk-usage-mapper_VolGroup-lv_root-available.gauge 36329956        1404871027
-base.metrics.disk-usage-mapper_VolGroup-lv_root-used.gauge      1487388 1404871027
-base.metrics.loadavg-1.gauge    0.00    1404871027
-base.metrics.loadavg-15.gauge   0.00    1404871027
-base.metrics.loadavg-5.gauge    0.00    1404871027
-base.metrics.memory-buffers.gauge       41160704        1404871027
-base.metrics.memory-cached.gauge        218746880       1404871027
-base.metrics.memory-free.gauge  68255744        1404871027
-base.metrics.memory-inactive.gauge      143384576       1404871027
-base.metrics.memory-swap-free.gauge     970604544       1404871027
-base.metrics.memory-swap-total.gauge    973070336       1404871027
-base.metrics.memory-swap-used.gauge     2465792 1404871027
-base.metrics.memory-total.gauge 480718848       1404871027
-base.metrics.memory-used.gauge  269078528       1404871027
-base.metrics.processors.gauge   1       1404871027
-base.metrics.tcp-established.gauge      3       1404871027
-base.meta.disk-usage-mapper_VolGroup-lv_root-mount      /       1404871027
-base.meta.uptime        55326   1404871027
-base.meta.version       Linux version 2.6.32-431.el6.x86_64 (mockbuild@c6b8.bsys.dev.centos.org) (gcc version 4.4.7 20120313 (Red Hat 4.4.7-4) (GCC) ) #1 SMP Fri Nov 22 03:15:09 UTC 2013  1404871027
+base.metrics.cpu-guest-nice.derive	0	1404873350
+base.metrics.cpu-guest.derive	0	1404873350
+base.metrics.cpu-idle.derive	5689557	1404873350
+base.metrics.cpu-iowait.derive	998	1404873350
+base.metrics.cpu-irq.derive	894	1404873350
+base.metrics.cpu-nice.derive	1	1404873350
+base.metrics.cpu-softirq.derive	899	1404873350
+base.metrics.cpu-steal.derive	0	1404873350
+base.metrics.cpu-system.derive	13462	1404873350
+base.metrics.cpu-user.derive	44682	1404873350
+base.metrics.disk-io-mapper_VolGroup-lv_root-read-ios.derive	38124	1404873350
+base.metrics.disk-io-mapper_VolGroup-lv_root-read-sectors.derive	1013426	1404873350
+base.metrics.disk-io-mapper_VolGroup-lv_root-write-ios.derive	311834	1404873350
+base.metrics.disk-io-mapper_VolGroup-lv_root-write-sectors.device	2462360	1404873350
+base.metrics.disk-io-mapper_VolGroup-lv_swap-read-ios.derive	409	1404873350
+base.metrics.disk-io-mapper_VolGroup-lv_swap-read-sectors.derive	3272	1404873350
+base.metrics.disk-io-mapper_VolGroup-lv_swap-write-ios.derive	630	1404873350
+base.metrics.disk-io-mapper_VolGroup-lv_swap-write-sectors.device	5040	1404873350
+base.metrics.disk-io-sda-read-ios.derive	24676	1404873350
+base.metrics.disk-io-sda-read-sectors.derive	1023692	1404873350
+base.metrics.disk-io-sda-write-ios.derive	43704	1404873350
+base.metrics.disk-io-sda-write-sectors.device	2467476	1404873350
+base.metrics.disk-usage-mapper_VolGroup-lv_root-available.gauge	36329940	1404873350
+base.metrics.disk-usage-mapper_VolGroup-lv_root-used.gauge	1487404	1404873350
+base.metrics.loadavg-1.gauge	0.00	1404873350
+base.metrics.loadavg-15.gauge	0.00	1404873350
+base.metrics.loadavg-5.gauge	0.00	1404873350
+base.metrics.memory-buffers.gauge	41582592	1404873350
+base.metrics.memory-cached.gauge	218800128	1404873350
+base.metrics.memory-free.gauge	68136960	1404873350
+base.metrics.memory-inactive.gauge	143220736	1404873350
+base.metrics.memory-swap-free.gauge	970604544	1404873350
+base.metrics.memory-swap-total.gauge	973070336	1404873350
+base.metrics.memory-swap-used.gauge	2465792	1404873350
+base.metrics.memory-total.gauge	480718848	1404873350
+base.metrics.memory-used.gauge	269361152	1404873350
+base.metrics.processors.gauge	1	1404873350
+base.metrics.tcp-established.gauge	3	1404873350
+base.metrics.traffic-eth0-rxbytes.derive	146026292	1404873350
+base.metrics.traffic-eth0-txbytes.derive	4955348	1404873350
+base.meta.disk-io-devices	mapper_VolGroup-lv_root,mapper_VolGroup-lv_swap,sda	1404873350
+base.meta.disk-usage-devices	mapper_VolGroup-lv_root	1404873350
+base.meta.disk-usage-mapper_VolGroup-lv_root-mount	/	1404873350
+base.meta.traffic-interfaces	eth0	1404873350
+base.meta.uptime	57649	1404873350
+base.meta.version	Linux version 2.6.32-431.el6.x86_64 (mockbuild@c6b8.bsys.dev.centos.org) (gcc version 4.4.7 20120313 (Red Hat 4.4.7-4) (GCC) ) #1 SMP Fri Nov 22 03:15:09 UTC 2013	1404873350
 ```
 
 ### 拡張metrics(plugin)
