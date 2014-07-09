@@ -214,7 +214,6 @@ sub disk_usage {
     return unless @mount_points;
     my ($result, $exit_code) = cap_cmd(['df',@mount_points]);
     die "failed to exec df\n" if $exit_code != 0;
-    my $ret;
     my @devices;
     for ( split /\n/, $result ) {
         chomp;chomp;
@@ -273,20 +272,47 @@ sub disk_io {
 
 sub traffic {
     my $self = shift;
-    open my $fh, '<', '/proc/net/dev' or die "$!\n";
+
+    my ($result, $exit_code) = cap_cmd(['ip','-s','-o','link']);
+    die "failed to exec ip link\n" if $exit_code != 0;
+
+#2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+#    link/ether 00:xx:xx:xx:xx:xx brd ff:ff:ff:ff:ff:ff
+#    RX: bytes  packets  errors  dropped overrun mcast   
+#    419890719  512995634 0       0       0       0      
+#    TX: bytes  packets  errors  dropped carrier collsns 
+#    2050758259 400885501 0       0       0       0 
+#5: eth3: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN qlen 1000
+#    link/ether xx:xx:xx:xx:xx:xx brd ff:ff:ff:ff:ff:ff
+#    RX: bytes  packets  errors  dropped overrun mcast   
+#    0          0        0       0       0       0      
+#    TX: bytes  packets  errors  dropped carrier collsns 
+#    0          0        0       0       0       0      
+#6: eth1.66@eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP 
+#    link/ether xx:xx:xx:xx:xx:xx brd ff:ff:ff:ff:ff:ff
+#    RX: bytes  packets  errors  dropped overrun mcast   
+#    4092101350 335780455 0       0       0       3122   
+#    TX: bytes  packets  errors  dropped carrier collsns 
+#    2759531860 774335892 0       0       0       0      
+
     my @interfaces;
-    while (<$fh>) {
-        if ( m!^\s*(.+):\s*(.*)$! ) {
+    for ( split /\n/, $result ) {
+        chomp;chomp;
+        if ( m!^\d+:\s*([a-z0-9]+):\s<([^>]+)>\s(.*)$! ) {
             my $interface = $1;
-            my $stat = $2;
+            my $state = $2;
+            my $stats = $3;
             next if $interface eq 'lo'; #skip loopback
-            next if $interface =~ m!\.!; #skip vlan
-            next if $interface =~ m!^sit\d+$!; #ipv6 tunnel?
+            next unless grep { $_ eq "UP" } split /,/, $state; #not up
+
             $interface =~ s![^A-Za-z0-9_-]!_!g;
             push @interfaces, $interface;
-            my @stats = split /\s+/, $stat;
-            $self->metrics->{"traffic-${interface}-rxbytes.derive"} = $stats[0];
-            $self->metrics->{"traffic-${interface}-txbytes.derive"} = $stats[8];
+
+            my (undef,undef,undef,$rx_stat,undef,$tx_stat) = split /\\\s*/, $stats;
+            my @rx_stats = split /\s+/, $rx_stat;
+            $self->metrics->{"traffic-${interface}-rxbytes.derive"} = $rx_stats[0];
+            my @tx_stats = split /\s+/, $tx_stat;
+            $self->metrics->{"traffic-${interface}-txbytes.derive"} = $tx_stats[0];
         }
     }
     $self->meta->{"traffic-interfaces"} = join ",", @interfaces if @interfaces;
