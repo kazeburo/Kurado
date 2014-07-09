@@ -248,6 +248,7 @@ sub disk_io {
     my @devices;
     for my $stat ( @stats ) {
         my ($device) = ( $stat =~ m!^/sys/block/(.+)/stat$! );
+        next if $device =~ m!^(loop|ram)\d+$!;
         open my $fh, '<', $stat or die "$!\n";
         my $dstat = <$fh>;
         close $fh;
@@ -275,10 +276,12 @@ sub traffic {
     open my $fh, '<', '/proc/net/dev' or die "$!\n";
     my @interfaces;
     while (<$fh>) {
-        if ( m!^\s+([^:]+):\s*(.*)$! ) {
+        if ( m!^\s*(.+):\s*(.*)$! ) {
             my $interface = $1;
             my $stat = $2;
             next if $interface eq 'lo'; #skip loopback
+            next if $interface =~ m!:!; #skip vlan
+            next if $interface =~ m!^sit\d+$!; #ipv6 tunnel?
             $interface =~ s![^A-Za-z0-9_-]!_!g;
             push @interfaces, $interface;
             my @stats = split /\s+/, $stat;
