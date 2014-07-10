@@ -7,13 +7,13 @@
 - インストールが面倒なのでSNMP.pmに依存しない
 - agentからのpushと、monitoringサーバからのpullの両方をつかうハイブリッド構成
 - rrdtoolを使うところは変わらない。大量にグラフを表示したいのでjsだとたぶんきつい
-- SQLiteで頑張らない。MySQLを使って付属情報を保存
+- SQLiteで頑張らない。Redisを使って付属情報を保存
 
 ## しくみ
 
 ### workerは4種類
 
-1. agentからのmetricsを受け取って、rrdとmysqlをアップデートするjob worker
+1. agentからのmetricsを受け取って、rrdとRedisをアップデートするjob worker
 2. metricsをpullして、rrdとmysqlをアップデートするjob worker
 3. 1分毎に起動して2にキューを投げるwoker
 4. web画面
@@ -23,29 +23,20 @@
 
 ### pull
 
-## MQTT Broker
+## Redis
 
-RabbitMQとMosquittoが使える
+Redisをキュー/付属情報DBとして使う
 
-http://mosquitto.org/
+### Redisのインストール
 
-http://www.rabbitmq.com/mqtt.html
-
-RabbitMQを使う予定
-
-### RabbitMQ + MQTTのインストール
-
-http://www.rabbitmq.com/install-rpm.html
-
-CenOS6 だと
-
-1.  EPELを有効にして、`yum install erlang`
-2.  http://www.rabbitmq.com/install-rpm.html から最新版のURLをみて、`rpm -ivh` or `yum install`
+CenOS6 だとEPEL/Remiを有効にして `yum install redis` ？
 
 ```
-$ rabbitmq-plugins enable rabbitmq_mqtt
-$ service rabbitmq-server start
-$ chkconfig rabbitmq-server on
+$ sudo yum install http://ftp.jaist.ac.jp/pub/Linux/Fedora/epel/6/i386/epel-release-6-8.noarch.rpm
+$ sudo yum install http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+$ sudo yum --enablerepo=remi,epel install redis
+$ service redis start
+$ chkconfig redis on
 ```
 
 # Agent
@@ -67,13 +58,13 @@ $ kurado_agent --dump
 1分毎にサーバにmetricsを送る
 
 ```
-$ kurado_agent --interval 1 --self ip.address.of.myself --mqtt 127.0.0.1:1887 --conf-d /etc/kurado_agent/conf.d
+$ kurado_agent --interval 1 --self-ip ip.address.of.myself --mq 127.0.0.1:1887 --conf-d /etc/kurado_agent/conf.d
 ```
 
 
 ### オプション
 
-- --self
+- --self-ip
 
     サーバのIPアドレス
 
@@ -85,9 +76,9 @@ $ kurado_agent --interval 1 --self ip.address.of.myself --mqtt 127.0.0.1:1887 --
 
     現在のmetricsを表示して終了
 
-- --mqtt
+- --mq
 
-    MQTT brokerサーバの IPアドレス:ポート
+    Redisの IPアドレス:ポート
  
 - --pidfile
 
@@ -96,6 +87,11 @@ $ kurado_agent --interval 1 --self ip.address.of.myself --mqtt 127.0.0.1:1887 --
 - --interval
 
     metricsを送信する間隔(分)。デフォルトは1(分)
+
+- --max-delay
+
+    metricsを遅延する最大秒数(秒)。"0"秒に負荷が集中するのを低減する。デフォルトは0(なし)
+
 
 ### 標準のmetrics
 
@@ -110,7 +106,10 @@ $ kurado_agent --interval 1 --self ip.address.of.myself --mqtt 127.0.0.1:1887 --
 
 などを取っている
 
-tab切りで、`key[TAB]value[TAB]timestamp` 形式
+tab切りで、`ip[TAB]key[TAB]value[TAB]timestamp` 形式。
+
+サンプルはIPを省略している
+
 
 ```
 base.metrics.cpu-guest-nice.derive	0	1404873350
@@ -168,11 +167,30 @@ base.meta.version	Linux version 2.6.32-431.el6.x86_64 (mockbuild@c6b8.bsys.dev.c
  sample.toml
  
  ```
-[plugin.metrics.process]command = "echo -e \"fork.derive\t\"$(cat /proc/stat |grep processes | awk '{print $2}')\"\t\"$(date +%s)"```
+[plugin.metrics.process]
+command = "echo -e \"fork.derive\t\"$(cat /proc/stat |grep processes | awk '{print $2}')\"\t\"$(date +%s)"
+```
 
-pluginは```[plugin.metrics.${plugin_name}```として設定する。ドットの数は2つである必要がある
-pluginから以下の形式で出力する- metrics   `metrics.${name1}[.${name2}[.{gauge,counter,derive,absolute}]]\t${value}\t${timestamp}`- meta
-   `meta.${name1}[.${name2}\t${text}`keyの最初がmetricsやmetaではない場合、"metrics"が追加される。<br />keyの最後が .{gauge,..} 等でなかった場合は、gaugeが使われる。<br />metaはmetricsの付属情報としてDBに保存される。サーバ情報などに使われる。履歴は残らない
+pluginは
+
+```
+[plugin.metrics.${plugin_name}
+```
+
+として設定する。ドットの数は2つである必要がある
+
+pluginから以下の形式で出力する
+
+- metrics
+
+   `metrics.${name1}[.${name2}[.{gauge,counter,derive,absolute}]]\t${value}\t${timestamp}`
+
+- meta
+   `meta.${name1}[.${name2}\t${text}`
+
+keyの最初がmetricsやmetaではない場合、"metrics"が追加される。<br />
+keyの最後が .{gauge,..} 等でなかった場合は、gaugeが使われる。<br />
+metaはmetricsの付属情報としてDBに保存される。サーバ情報などに使われる。履歴は残らない
 
 上のprocess pluginの出力は
 

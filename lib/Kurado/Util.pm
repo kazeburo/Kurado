@@ -1,4 +1,4 @@
-package Kurado::Agent::Util;
+package Kurado::Util;
 
 use strict;
 use warnings;

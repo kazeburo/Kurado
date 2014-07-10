@@ -10,20 +10,22 @@ use Pod::Usage;
 
 use Proc::Pidfile;
 use Kurado::Agent;
-use Kurado::Agent::Util;
-use Kurado::Agent::MQ;
+use Kurado::Util;
+use Kurado::MQ;
 use Kurado::Agent::Collector;
 use Kurado::Agent::Config;
 
 my $interval = 1;
+my $max_delay = 0;
 Getopt::Long::Configure ("no_ignore_case");
 GetOptions(
-    "self=s"     => \my $self_ip,
+    "self-ip=s"     => \my $self_ip,
     "conf-d=s"   => \my $config_dir,
     "dump"       => \my $dump,
-    "mqtt=s"     => \my $mqtt,
-    "pidfile=s"   => \my $pidfile,
+    "mq=s"       => \my $mq,
+    "pidfile=s"  => \my $pidfile,
     "interval|i=i" => \$interval,
+    "max-delay=i" => \$max_delay,
     "h|help"     => \my $help,
     "v|version"  => \my $version,
 );
@@ -50,11 +52,17 @@ if ( $config_dir ) {
 my $collector = Kurado::Agent::Collector->new($plugins);
 
 if ( $dump ) {
-    print $collector->collect;
+    my $message;
+    eval {
+        $message = $collector->collect("dump");
+        $message .= $collector->collect_plugins("dump");
+    };
+    die "$@\n" if $@;
+    print $message;
     exit;
 }
 
-if ( !$self_ip || !$mqtt || !$interval) {
+if ( !$self_ip || !$mq || !$interval) {
     pod2usage(-verbose=>0,-exitval=>1);
 }
 
@@ -66,19 +74,21 @@ if ( $pidfile ) {
 $0 = "kurado_agent master";
 supervisor(sub {
     $0 = "kurado_agent";
-    my $mq = Kurado::Agent::MQ->new(server => $mqtt);
-    $self_ip =~ s/\./_/g; # mqtt replace "." to '/'
+    my $mq = Kurado::MQ->new(server => $mq);
     local $SIG{TERM}  = sub {
         $mq->{stop_loop} = 1;
     };
     $mq->timetick_publisher(
         $interval*60,
+        $max_delay,
         sub {
-            my $message = eval {
-                $collector->collect;
+            my $message;
+            eval {
+                $message = $collector->collect($self_ip);
+                $message .= $collector->collect_plugins($self_ip);
             };
             die "failed collect metrics: $@\n" if $@;
-            return ['kurado/update/'.$self_ip, $message];
+            return ['kurado-update', $message];
         }
     );
     exit();
@@ -98,7 +108,7 @@ kurado_agent - Kurado agent
   % kurado_agent --dump
   
   # run 
-  % kurado_agent --interval 1 --self ip.address.of.myself --mqtt 127.0.0.1:1887 --conf-d /etc/kurado_agent/conf.d
+  % kurado_agent --interval 1 --self-ip ip.address.of.myself --mq 127.0.0.1:6379 --conf-d /etc/kurado_agent/conf.d
 
 =head1 DESCRIPTION
 
@@ -116,13 +126,17 @@ path to config directory. files shuold be '*.toml' (optional)
 
 interval minutes default 1 (60sec)
 
-=item --mqtt
+=item --mq
 
-MQTT broker server
+Redis Server for message queue
 
 =item --pidfile
 
 pidfile
+
+=item --max-delay
+
+max delay second of interval metrics sending. for avoiding thundering herd of "0" seconds
 
 =item -v --version
 

@@ -2,8 +2,7 @@ package Kurado::Agent::Collector;
 
 use strict;
 use warnings;
-use utf8;
-use Kurado::Agent::Util;
+use Kurado::Util;
 
 our @FUNC = qw/memory loadavg uptime sys_version processors cpu_usage tcp_established disk_usage disk_io traffic/;
 
@@ -25,7 +24,7 @@ sub meta {
 }
 
 sub collect {
-    my $self = shift;
+    my ($self,$self_ip) = @_;
     $self->{metrics} = {};
     $self->{meta} = {};
     my %warn;
@@ -41,15 +40,14 @@ sub collect {
     }
     my $body;
     my $time = time();
-    $body .= "base.metrics.$_\t".$self->{metrics}->{$_}."\t$time\n" for sort keys %{$self->{metrics}};
-    $body .= "base.meta.$_\t".$self->{meta}->{$_}."\t$time\n" for sort keys %{$self->{meta}};
-    $body .= "base.warn.$_\t".$warn{$_}."\t$time\n" for sort keys %warn;
-    $body .= $self->collect_plugins();
+    $body .= "$self_ip\tbase.metrics.$_\t".$self->{metrics}->{$_}."\t$time\n" for sort keys %{$self->{metrics}};
+    $body .= "$self_ip\tbase.meta.$_\t".$self->{meta}->{$_}."\t$time\n" for sort keys %{$self->{meta}};
+    $body .= "$self_ip\tbase.warn.$_\t".$warn{$_}."\t$time\n" for sort keys %warn;
     $body;
 }
 
 sub collect_plugins {
-    my $self = shift;
+    my ($self,$self_ip) = @_;
     my $body = '';
     my $time = time;
     for my $plugin_key ( keys %{$self->{plugins}} ){
@@ -73,7 +71,7 @@ sub collect_plugins {
         if ( $@ ) {
             my $warn = $@;
             $warn =~ s!(?:\n|\r)!!g;
-            $body .= "$plugin_key.warn.command\t$warn\t$time\n";
+            $body .= "$self_ip\t$plugin_key.warn.command\t$warn\t$time\n";
         }
     }
     $body;
