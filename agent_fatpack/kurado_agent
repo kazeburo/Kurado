@@ -9,10 +9,6 @@ $fatpacked{"Cwd/Guard.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'CWD_G
   package Cwd::Guard;use strict;use warnings;use parent 'Exporter';our@EXPORT_OK=qw/cwd_guard/;our$Error;our$VERSION='0.04';use constant USE_FCHDIR=>eval {opendir my$dh,'.';chdir$dh;1};use if!USE_FCHDIR,Cwd=>qw/getcwd/;sub cwd_guard {my$dir=shift;__PACKAGE__->new($dir)}sub new {my$class=shift;my$dir=shift;my$cwd;if (USE_FCHDIR){opendir$cwd,'.'}else {$cwd=getcwd()}my$callback=sub {chdir$cwd};my$result=defined$dir ? chdir($dir): chdir();$Error=$!;return unless$result;bless$callback,$class}sub DESTROY {$_[0]->()}1;
 CWD_GUARD
 
-$fatpacked{"Devel/InnerPackage.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'DEVEL_INNERPACKAGE';
-  package Devel::InnerPackage;use strict;use base qw(Exporter);use vars qw($VERSION @EXPORT_OK);use if $] > 5.017,'deprecate';$VERSION='0.4';@EXPORT_OK=qw(list_packages);sub list_packages {my$pack=shift;$pack .= "::" unless$pack =~ m!::$!;no strict 'refs';my@packs;my@stuff=grep!/^(main|)::$/,keys %{$pack};for my$cand (grep /::$/,@stuff){$cand =~ s!::$!!;my@children=list_packages($pack.$cand);push@packs,"$pack$cand" unless$cand =~ /^::/ || !__PACKAGE__->_loaded($pack.$cand);push@packs,@children}return grep {$_ !~ /::(::ISA::CACHE|SUPER)/}@packs}sub _loaded {my ($class,$name)=@_;no strict 'refs';return 1 if defined ${"${name}::VERSION"};return 1 if @{"${name}::ISA"};for (keys %{"${name}::"}){next if substr($_,-2,2)eq '::';return 1 if defined &{"${name}::$_"}}my$filename=join('/',split /(?:'|::)/,$name).'.pm';return 1 if defined$INC{$filename};''}1;
-DEVEL_INNERPACKAGE
-
 $fatpacked{"Kurado/Agent.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_AGENT';
   package Kurado::Agent;
   
@@ -31,8 +27,7 @@ $fatpacked{"Kurado/Agent/Collector.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
   
   use strict;
   use warnings;
-  use utf8;
-  use Kurado::Agent::Util;
+  use Kurado::Util;
   
   our @FUNC = qw/memory loadavg uptime sys_version processors cpu_usage tcp_established disk_usage disk_io traffic/;
   
@@ -54,7 +49,7 @@ $fatpacked{"Kurado/Agent/Collector.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
   }
   
   sub collect {
-      my $self = shift;
+      my ($self,$self_ip) = @_;
       $self->{metrics} = {};
       $self->{meta} = {};
       my %warn;
@@ -70,15 +65,14 @@ $fatpacked{"Kurado/Agent/Collector.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
       }
       my $body;
       my $time = time();
-      $body .= "base.metrics.$_\t".$self->{metrics}->{$_}."\t$time\n" for sort keys %{$self->{metrics}};
-      $body .= "base.meta.$_\t".$self->{meta}->{$_}."\t$time\n" for sort keys %{$self->{meta}};
-      $body .= "base.warn.$_\t".$warn{$_}."\t$time\n" for sort keys %warn;
-      $body .= $self->collect_plugins();
+      $body .= "$self_ip\tbase.metrics.$_\t".$self->{metrics}->{$_}."\t$time\n" for sort keys %{$self->{metrics}};
+      $body .= "$self_ip\tbase.meta.$_\t".$self->{meta}->{$_}."\t$time\n" for sort keys %{$self->{meta}};
+      $body .= "$self_ip\tbase.warn.$_\t".$warn{$_}."\t$time\n" for sort keys %warn;
       $body;
   }
   
   sub collect_plugins {
-      my $self = shift;
+      my ($self,$self_ip) = @_;
       my $body = '';
       my $time = time;
       for my $plugin_key ( keys %{$self->{plugins}} ){
@@ -102,7 +96,7 @@ $fatpacked{"Kurado/Agent/Collector.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
           if ( $@ ) {
               my $warn = $@;
               $warn =~ s!(?:\n|\r)!!g;
-              $body .= "$plugin_key.warn.command\t$warn\t$time\n";
+              $body .= "$self_ip\t$plugin_key.warn.command\t$warn\t$time\n";
           }
       }
       $body;
@@ -400,244 +394,6 @@ $fatpacked{"Kurado/Agent/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n
   
 KURADO_AGENT_CONFIG
 
-$fatpacked{"Kurado/Agent/MQ.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_AGENT_MQ';
-  package Kurado::Agent::MQ;
-  
-  use strict;
-  use warnings;
-  use utf8;
-  use Net::MQTT::Constants;
-  use Net::MQTT::Message;
-  use POSIX qw(EINTR EAGAIN EWOULDBLOCK :sys_wait_h);
-  use IO::Socket qw(:crlf IPPROTO_TCP TCP_NODELAY);
-  use IO::Socket::INET;
-  use IO::Select;
-  
-  our $READ_BYTES = 16 * 1024;
-  
-  sub new {
-      my $class = shift;
-      my %args = ref $_ ? %{$_[0]} : @_;
-      %args = (
-          server => '127.0.0.1:1883',
-          keep_alive_timer => 180,
-          timeout => 30,
-          %args,
-      );
-      my $server = shift;
-      my $self = bless \%args, $class;
-      $self->connect;
-      $self;
-  }
-  
-  sub connect {
-      my $self = shift;
-      return $self->{sock} if $self->{sock};
-      $self->{sockbuf} = '';
-      my $socket = IO::Socket::INET->new(
-          PeerAddr => $self->{server},
-          Timeout => $self->{timeout},
-      ) or die "Socket connect failed: $!";
-      $socket->blocking(0);
-      $socket->setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
-          or die "setsockopt(TCP_NODELAY) failed:$!";
-      $self->{sock} = $socket;
-  
-      # on connect
-      my $msg = Net::MQTT::Message->new(
-          message_type => MQTT_CONNECT,
-          keep_alive_timer => $self->{keep_alive_timer}
-      );
-      $msg = $msg->bytes;
-      $self->write_all($msg) or die "Failed to send MQTT_CONNECT\n";
-  
-      # conn-ack
-      my $buf = '';
-      while (1) {
-          my $mqtt = Net::MQTT::Message->new_from_bytes($buf, 1);
-          last if defined $mqtt;
-          $self->read_timeout(\$buf, $READ_BYTES, length $buf)
-              or die "No ConnAck\n";
-      }
-  
-      # ping 
-      $self->{next_ping} = time + $self->{keep_alive_timer};
-      $self->{got_ping_response} = 1;
-  
-      $socket;
-  }
-  
-  sub send_message {
-      my $self = shift;
-      my $msg = Net::MQTT::Message->new(@_);
-      $msg = $msg->bytes;
-      $self->write_all($msg);
-  }
-  
-  sub read_message {
-      my $self = shift;
-      $self->{sockbuf} = '';
-      while (1) {
-          my $mqtt = Net::MQTT::Message->new_from_bytes($self->{sockbuf}, 1);
-          return $mqtt if (defined $mqtt);
-          $self->read_timeout(\$self->{sockbuf}, $READ_BYTES, length $self->{sockbuf})
-              or return;
-      }
-  }
-  
-  sub watchfh_publisher {
-      my ($self, $fh, $sub ) = @_;
-      my $socket = $self->connect;
-      my @fh = ref $fh eq 'ARRAY' ? @$fh : ($fh);
-      my $s = IO::Select->new($socket, @fh);
-      $self->{stop_loop} = 0;
-      while ( !$self->{stop_loop} ) {
-          my $read_timeout = $self->{next_ping} - time;
-          my @can_read = $s->can_read($read_timeout);
-          for my $rs (@can_read) {
-              if ( fileno($rs) == fileno($socket) ) {
-                  # mqtt socker
-                  my $msg = $self->read_message();
-                  if ( ref $msg && $msg->message_type == MQTT_PINGRESP) {
-                      $self->{got_ping_response} = 1;
-                  }
-              }
-              else {
-                  my $msg = $sub->($rs);
-                  $self->send_message(
-                      message_type => MQTT_PUBLISH,
-                      retain => 0,
-                      topic => $msg->[0],
-                      message => $msg->[1],
-                  ) if ref $msg;
-              }
-          }
-          if ( time >= $self->{next_ping} ) {
-              die "Ping response timeout. maybe disconnected\n" unless $self->{got_ping_response};
-              $self->{got_ping_response} = 0;
-              $self->send_message(
-                  message_type => MQTT_PINGREQ,
-              );            
-              $self->{next_ping} = time + $self->{keep_alive_timer};
-          }
-      }
-  }
-  
-  sub timetick_publisher {
-      my ($self, $interval, $sub ) = @_;
-      my $socket = $self->connect;
-  
-      my $next_tick = $interval + time;
-      $next_tick = $next_tick - ($next_tick % $interval);
-  
-      my $s = IO::Select->new($socket);
-      $self->{stop_loop} = 0;
-      while ( !$self->{stop_loop} ) {
-          my $read_timeout = $next_tick > $self->{next_ping} ? $self->{next_ping} : $next_tick;
-          $read_timeout = $read_timeout - time;
-          my @can_read = $s->can_read($read_timeout);
-          for my $rs (@can_read) {
-              if ( fileno($rs) == fileno($socket) ) {
-                  # mqtt socker
-                  my $msg = $self->read_message();
-                  if ( ref $msg && $msg->message_type == MQTT_PINGRESP) {
-                      $self->{got_ping_response} = 1;
-                  }
-              }
-          }
-          # ping
-          if ( time >= $self->{next_ping} ) {
-              die "Ping response timeout. maybe disconnected\n" unless $self->{got_ping_response};
-              $self->{got_ping_response} = 0;
-              $self->send_message(
-                  message_type => MQTT_PINGREQ,
-              );            
-              $self->{next_ping} = time + $self->{keep_alive_timer};
-          }
-          # app
-          if ( time >= $next_tick  ) {
-              $next_tick = time + $interval;
-              my $msg = $sub->();
-              $self->send_message(
-                  message_type => MQTT_PUBLISH,
-                  retain => 0,
-                  topic => $msg->[0],
-                  message => $msg->[1],
-              ) if ref $msg;
-          }
-      }
-  }
-  
-  # returns (positive) number of bytes read, or undef if the socket is to be closed
-  sub read_timeout {
-      my ($self, $buf, $len, $off, $timeout) = @_;
-      $timeout ||= $self->{timeout};
-      $self->do_io(undef, $buf, $len, $off, $timeout);
-  }
-  
-  # returns (positive) number of bytes written, or undef if the socket is to be closed
-  sub write_timeout {
-      my ($self, $buf, $len, $off, $timeout) = @_;
-      $timeout ||= $self->{timeout};
-      $self->do_io(1, $buf, $len, $off, $timeout);
-  }
-  
-  # writes all data in buf and returns number of bytes written or undef if failed
-  sub write_all {
-      my ($self, $buf, $timeout) = @_;
-      $timeout ||= $self->{timeout};
-      my $off = 0;
-      while (my $len = length($buf) - $off) {
-          my $ret = $self->write_timeout($buf, $len, $off, $timeout)
-              or return;
-          $off += $ret;
-      }
-      return length $buf;
-  }
-  
-  # returns value returned by $cb, or undef on timeout or network error
-  sub do_io {
-      my ($self, $is_write, $buf, $len, $off, $timeout) = @_;
-      my $sock = $self->{sock};
-      my $ret;
-   DO_READWRITE:
-      # try to do the IO
-      if ($is_write) {
-          $ret = syswrite $sock, $buf, $len, $off
-              and return $ret;
-      } else {
-          $ret = sysread $sock, $$buf, $len, $off
-              and return $ret;
-      }
-      unless ((! defined($ret)
-                   && ($! == EINTR || $! == EAGAIN || $! == EWOULDBLOCK))) {
-          die "cannot write/read mqtt socket\n";
-          return;
-      }
-      # wait for data
-   DO_SELECT:
-      while (1) {
-          my ($rfd, $wfd);
-          my $efd = '';
-          vec($efd, fileno($sock), 1) = 1;
-          if ($is_write) {
-              ($rfd, $wfd) = ('', $efd);
-          } else {
-              ($rfd, $wfd) = ($efd, '');
-          }
-          my $start_at = time;
-          my $nfound = select($rfd, $wfd, $efd, $timeout);
-          $timeout -= (time - $start_at);
-          last if $nfound;
-          return if $timeout <= 0;
-      }
-      goto DO_READWRITE;
-  }
-  
-  1;
-  
-KURADO_AGENT_MQ
-
 $fatpacked{"Kurado/Agent/TOML.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_AGENT_TOML';
   package Kurado::Agent::TOML;
   
@@ -805,8 +561,364 @@ $fatpacked{"Kurado/Agent/TOML.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".
   1;
 KURADO_AGENT_TOML
 
-$fatpacked{"Kurado/Agent/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_AGENT_UTIL';
-  package Kurado::Agent::Util;
+$fatpacked{"Kurado/MQ.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_MQ';
+  package Kurado::MQ;
+  
+  use strict;
+  use warnings;
+  use POSIX qw(EINTR EAGAIN EWOULDBLOCK :sys_wait_h);
+  use IO::Socket qw(:crlf IPPROTO_TCP TCP_NODELAY);
+  use IO::Socket::INET;
+  use IO::Select;
+  use Encode;
+  
+  our $READ_BYTES = 16 * 1024;
+  
+  sub new {
+      my $class = shift;
+      my %args = ref $_ ? %{$_[0]} : @_;
+      %args = (
+          server => '127.0.0.1:6379',
+          keep_alive_timer => 30,
+          timeout => 10,
+          %args,
+      );
+      my $server = shift;
+      my $self = bless \%args, $class;
+      $self->connect;
+      $self;
+  }
+  
+  sub connect {
+      my $self = shift;
+      return $self->{sock} if $self->{sock};
+      $self->{sockbuf} = '';
+      $self->{message_id} = 1;
+      my $socket = IO::Socket::INET->new(
+          PeerAddr => $self->{server},
+          Timeout => $self->{timeout},
+      ) or die "Socket connect failed: $!";
+      $socket->blocking(0);
+      $socket->setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
+          or die "setsockopt(TCP_NODELAY) failed:$!";
+      $self->{sock} = $socket;
+  
+      # ping 
+      $self->{next_ping} = time + $self->{keep_alive_timer};
+  
+      $socket;
+  }
+  
+  sub send_message {
+      my $self = shift;
+      my @msg = @_;
+      return unless @msg;
+      my $msg = '*'.scalar(@msg).$CRLF;
+      for my $m (@msg) {
+          $m = Encode::encode_utf8($m);
+          $msg .= '$'.length($m).$CRLF;
+          $msg .= $m.$CRLF;
+      }
+      $self->write_all($msg);
+  }
+  
+  sub read_message {
+      my $self = shift;
+      $self->{sockbuf} = '';
+      while (1) {
+          my $msg = $self->parse_reply($self->{sockbuf});
+          return $msg if (defined $msg);
+          $self->read_timeout(\$self->{sockbuf}, $READ_BYTES, length $self->{sockbuf})
+              or return;
+      }
+  }
+  
+  sub parse_reply {
+      my $self = shift;
+      my $buf = shift;
+      return unless $buf =~ m/$CRLF$/sm;
+      $buf =~ s/$CRLF$//sm;
+  
+      my $s = substr($buf,0,1,"");
+      if ( $s eq '+' ) {
+          # 1 line reply
+          return Kurado::Agent::MQ::Msg->new($s);
+      }
+      elsif ( $s eq '-' ) {
+          # error
+          # -ERR unknown command 'a'
+          return Kurado::Agent::MQ::Msg->new(undef,$s);
+      }
+      elsif ( $s eq ':' ) {
+          # numeric
+          # :1404956783
+          return Kurado::Agent::MQ::Msg->new($s);
+      }
+      elsif ( $s eq '$' ) {
+          # bulk
+          # C: get mykey
+          # S: $3
+          # S: foo
+          my @msg = split /$CRLF/,$buf, 2;
+          return unless @msg == 2;
+          if ( $msg[0] eq '-1' ) {
+              return Kurado::Agent::MQ::Msg->new(undef);
+          }
+          return unless $msg[0] == length($msg[1]);
+          return Kurado::Agent::MQ::Msg->new($msg[1]);
+      }
+      elsif ( $s eq '*' ) {
+          # multibulk
+          # *3
+          # $3
+          # foo
+          # $-1
+          # $3
+          # baa
+          #
+          ## null list/timeout
+          # *-1
+          #
+  
+          my @msg = split /$CRLF/,$buf;
+          my $n = shift @msg;
+          return Kurado::Agent::MQ::Msg->new(undef) if $n eq '-1';
+          my @res;
+          while (my $k = shift @msg) {
+              return unless $k =~ m!^\$(-?\d+)$!;
+              my $length = $1;
+              if ( $length eq '-1' ) {
+                  push @res, undef;
+                  next;
+              }
+              my $v = shift @msg;
+              return unless length($v) == $length;
+              push @res, $v;
+          }
+          return if @res != $n;
+          return Kurado::Agent::MQ::Msg->new(\@res);
+      }
+      die "failed parse_reply\n";
+  }
+  
+  sub watchfh_publisher {
+      my ($self, $fh, $sub ) = @_;
+      my $socket = $self->connect;
+      my @fh = ref $fh eq 'ARRAY' ? @$fh : ($fh);
+      my $s = IO::Select->new($socket, @fh);
+      $self->{stop_loop} = 0;
+      while ( !$self->{stop_loop} ) {
+          my $read_timeout = $self->{next_ping} - time;
+          my @can_read = $s->can_read($read_timeout);
+          for my $rs (@can_read) {
+              if ( fileno($rs) == fileno($socket) ) {
+                  # redis socket
+                  die "may be disconnected from server\n";
+              }
+              else {
+                  my $msg = $sub->($rs);
+                  if ( ref $msg ) {
+                      $self->send_message(
+                          'RPUSH', $msg->[0], $msg->[1]
+                      ) or die "failed to send_message 'RPUSH': $!\n";
+                      my $res = $self->read_message();
+                      if ( !ref $res || !$res->success ) {
+                          die "failed to push msg: ".$res->error."\n";
+                      }
+                  }
+              }
+          }
+          if ( time >= $self->{next_ping} ) {
+              $self->send_message('PING') 
+                  or die "failed to send_message 'PING': $!\n";
+              $self->read_message()
+                  or die "failed to read Pong. maybe disconnected from server\n";
+              $self->{next_ping} = time + $self->{keep_alive_timer};
+          }
+      }
+  }
+  
+  sub timetick_publisher {
+      my ($self, $interval, $max_delay, $sub ) = @_;
+      my $socket = $self->connect;
+  
+      my $next_tick = $interval + time;
+      $next_tick = $next_tick - ($next_tick % $interval) + int(rand($max_delay));
+  
+      my $s = IO::Select->new($socket);
+      $self->{stop_loop} = 0;
+      while ( !$self->{stop_loop} ) {
+          my $read_timeout = $next_tick > $self->{next_ping} ? $self->{next_ping} : $next_tick;
+          $read_timeout = $read_timeout - time;
+          if ( $s->can_read($read_timeout) ) {
+              # redis socket
+              die "may be disconnected from server\n";
+          }
+          # ping
+          if ( time >= $self->{next_ping} ) {
+              $self->send_message('PING') 
+                  or die "failed to send_message 'PING': $!\n";
+              $self->read_message()
+                  or die "failed to read Pong. maybe disconnected from server\n";
+              $self->{next_ping} = time + $self->{keep_alive_timer};
+          }
+          # app
+          if ( time >= $next_tick  ) {
+              $next_tick = time + $interval;
+              my $msg = $sub->();
+              if ( ref $msg ) {
+                  $self->send_message(
+                      'RPUSH', $msg->[0], $msg->[1]
+                  ) or die "failed to send_message 'RPUSH': $!\n";
+                  my $res = $self->read_message();
+                  if ( !ref $res || !$res->success ) {
+                      die "failed to push msg: ".$res->error."\n";
+                  }
+              }
+          }
+      }
+  }
+  
+  sub subscribe {
+      my $self = shift;
+      my %callbacks = @_;
+      my $socket = $self->connect;
+  
+      my $queue_wait = int($self->{timeout}/2); # brocking time. half of timeout
+      $queue_wait ||= 1;
+      my @req = ('BRPOP');
+      push @req, $_ for keys %callbacks;
+      push @req, $queue_wait;
+  
+      my $s = IO::Select->new($socket);
+      $self->{stop_loop} = 0;
+      while ( !$self->{stop_loop} ) {
+          $self->send_message(@req) 
+              or die "failed to send_message 'BRPOP': $!\n";
+          my $res = $self->read_message();
+          if ( !ref $res || !$res->success ) {
+              die "failed to pop msg: ".$res->error."\n";
+          }
+          if ( ! defined $res->message || ! ref $res->message ) {
+              # timeout
+              next;
+          }
+          my ($received_topic,$message) = @{$res->message};
+          next unless exists $callbacks{$received_topic}; #??
+          eval {
+              $callbacks{$received_topic}->($received_topic,$message);
+          };
+          warn "[ERROR] $received_topic: $@\n" if $@;
+      }
+  }
+  
+  
+  # returns (positive) number of bytes read, or undef if the socket is to be closed
+  sub read_timeout {
+      my ($self, $buf, $len, $off, $timeout) = @_;
+      $timeout ||= $self->{timeout};
+      $self->do_io(undef, $buf, $len, $off, $timeout);
+  }
+  
+  # returns (positive) number of bytes written, or undef if the socket is to be closed
+  sub write_timeout {
+      my ($self, $buf, $len, $off, $timeout) = @_;
+      $timeout ||= $self->{timeout};
+      $self->do_io(1, $buf, $len, $off, $timeout);
+  }
+  
+  # writes all data in buf and returns number of bytes written or undef if failed
+  sub write_all {
+      my ($self, $buf, $timeout) = @_;
+      $timeout ||= $self->{timeout};
+      my $off = 0;
+      while (my $len = length($buf) - $off) {
+          my $ret = $self->write_timeout($buf, $len, $off, $timeout)
+              or return;
+          $off += $ret;
+      }
+      return length $buf;
+  }
+  
+  # returns value returned by $cb, or undef on timeout or network error
+  sub do_io {
+      my ($self, $is_write, $buf, $len, $off, $timeout) = @_;
+      my $sock = $self->{sock};
+      my $ret;
+   DO_READWRITE:
+      # try to do the IO
+      if ($is_write) {
+          $ret = syswrite $sock, $buf, $len, $off
+              and return $ret;
+      } else {
+          $ret = sysread $sock, $$buf, $len, $off
+              and return $ret;
+      }
+      unless ((! defined($ret)
+                   && ($! == EINTR || $! == EAGAIN || $! == EWOULDBLOCK))) {
+          die "cannot write/read mqtt socket\n";
+          return;
+      }
+      # wait for data
+   DO_SELECT:
+      while (1) {
+          my ($rfd, $wfd);
+          my $efd = '';
+          vec($efd, fileno($sock), 1) = 1;
+          if ($is_write) {
+              ($rfd, $wfd) = ('', $efd);
+          } else {
+              ($rfd, $wfd) = ($efd, '');
+          }
+          my $start_at = time;
+          my $nfound = select($rfd, $wfd, $efd, $timeout);
+          $timeout -= (time - $start_at);
+          last if $nfound;
+          return if $timeout <= 0;
+      }
+      goto DO_READWRITE;
+  }
+  
+  1;
+  
+  package Kurado::Agent::MQ::Msg;
+  
+  use strict;
+  use warnings;
+  
+  sub new {
+      my $class = shift;
+      my $msg = shift;
+      bless {
+          msg => $msg, 
+          (@_) ? (err => $_[0]) : (),
+      }, $class;
+  }
+  
+  sub error {
+      my $self = shift;
+      return $self->{err} if exists $self->{err};
+      return;
+  }
+  
+  sub success {
+      my $self = shift;
+      exists $self->{err} ? 0 : 1;
+  }
+  
+  sub message {
+      my $self = shift;
+      return $self->{msg};
+  }
+  
+  
+  1;
+  
+  
+KURADO_MQ
+
+$fatpacked{"Kurado/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_UTIL';
+  package Kurado::Util;
   
   use strict;
   use warnings;
@@ -943,87 +1055,19 @@ $fatpacked{"Kurado/Agent/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".
   
   1;
   
-KURADO_AGENT_UTIL
+KURADO_UTIL
 
-$fatpacked{"Module/Pluggable.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'MODULE_PLUGGABLE';
-  package Module::Pluggable;use strict;use vars qw($VERSION $FORCE_SEARCH_ALL_PATHS);use Module::Pluggable::Object;use if $] > 5.017,'deprecate';$VERSION='5.1';$FORCE_SEARCH_ALL_PATHS=0;sub import {my$class=shift;my%opts=@_;my ($pkg,$file)=caller;my$sub=$opts{'sub_name'}|| 'plugins';my ($package)=$opts{'package'}|| $pkg;$opts{filename}=$file;$opts{package}=$package;$opts{force_search_all_paths}=$FORCE_SEARCH_ALL_PATHS unless exists$opts{force_search_all_paths};my$finder=Module::Pluggable::Object->new(%opts);my$subroutine=sub {my$self=shift;return$finder->plugins(@_)};my$searchsub=sub {my$self=shift;my ($action,@paths)=@_;$finder->{'search_path'}=["${package}::Plugin"]if ($action eq 'add' and not $finder->{'search_path'});push @{$finder->{'search_path'}},@paths if ($action eq 'add');$finder->{'search_path'}=\@paths if ($action eq 'new');return$finder->{'search_path'}};my$onlysub=sub {my ($self,$only)=@_;if (defined$only){$finder->{'only'}=$only};return$finder->{'only'}};my$exceptsub=sub {my ($self,$except)=@_;if (defined$except){$finder->{'except'}=$except};return$finder->{'except'}};no strict 'refs';no warnings qw(redefine prototype);*{"$package\::$sub"}=$subroutine;*{"$package\::search_path"}=$searchsub;*{"$package\::only"}=$onlysub;*{"$package\::except"}=$exceptsub}1;
-MODULE_PLUGGABLE
-
-$fatpacked{"Module/Pluggable/Object.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'MODULE_PLUGGABLE_OBJECT';
-  package Module::Pluggable::Object;use strict;use File::Find ();use File::Basename;use File::Spec::Functions qw(splitdir catdir curdir catfile abs2rel);use Carp qw(croak carp confess);use Devel::InnerPackage;use vars qw($VERSION);use if $] > 5.017,'deprecate';$VERSION='5.1';sub new {my$class=shift;my%opts=@_;return bless \%opts,$class}sub plugins {my$self=shift;my@args=@_;$self->{'require'}=1 if$self->{'inner'};my$filename=$self->{'filename'};my$pkg=$self->{'package'};$self->_setup_exceptions;for (qw(search_path search_dirs)){$self->{$_}=[$self->{$_}]if exists$self->{$_}&&!ref($self->{$_})}$self->{'search_path'}||=["${pkg}::Plugin"];$self->{'on_require_error'}||=sub {my ($plugin,$err)=@_;carp "Couldn't require $plugin : $err";return 0};$self->{'on_instantiate_error'}||=sub {my ($plugin,$err)=@_;carp "Couldn't instantiate $plugin: $err";return 0};$self->{'follow_symlinks'}=1 unless exists$self->{'follow_symlinks'};my@SEARCHDIR=exists$INC{"blib.pm"}&& defined$filename && $filename =~ m!(^|/)blib/! &&!$self->{'force_search_all_paths'}? grep {/blib/}@INC : @INC;unshift@SEARCHDIR,@{$self->{'search_dirs'}}if defined$self->{'search_dirs'};my@tmp=@INC;unshift@tmp,@{$self->{'search_dirs'}|| []};local@INC=@tmp if defined$self->{'search_dirs'};my@plugins=$self->search_directories(@SEARCHDIR);push(@plugins,$self->handle_inc_hooks($_,@SEARCHDIR))for @{$self->{'search_path'}};push(@plugins,$self->handle_innerpackages($_))for @{$self->{'search_path'}};return ()unless@plugins;my%plugins;for(@plugins){next unless$self->_is_legit($_);$plugins{$_}=1}if (defined$self->{'instantiate'}){my$method=$self->{'instantiate'};my@objs=();for my$package (sort keys%plugins){next unless$package->can($method);my$obj=eval {$package->$method(@_)};$self->{'on_instantiate_error'}->($package,$@)if $@;push@objs,$obj if$obj}return@objs}else {my@objs=sort keys%plugins;return@objs}}sub _setup_exceptions {my$self=shift;my%only;my%except;my$only;my$except;if (defined$self->{'only'}){if (ref($self->{'only'})eq 'ARRAY'){%only=map {$_=>1}@{$self->{'only'}}}elsif (ref($self->{'only'})eq 'Regexp'){$only=$self->{'only'}}elsif (ref($self->{'only'})eq ''){$only{$self->{'only'}}=1}}if (defined$self->{'except'}){if (ref($self->{'except'})eq 'ARRAY'){%except=map {$_=>1}@{$self->{'except'}}}elsif (ref($self->{'except'})eq 'Regexp'){$except=$self->{'except'}}elsif (ref($self->{'except'})eq ''){$except{$self->{'except'}}=1}}$self->{_exceptions}->{only_hash}=\%only;$self->{_exceptions}->{only}=$only;$self->{_exceptions}->{except_hash}=\%except;$self->{_exceptions}->{except}=$except}sub _is_legit {my$self=shift;my$plugin=shift;my%only=%{$self->{_exceptions}->{only_hash}||{}};my%except=%{$self->{_exceptions}->{except_hash}||{}};my$only=$self->{_exceptions}->{only};my$except=$self->{_exceptions}->{except};my$depth=()=split '::',$plugin,-1;return 0 if (keys%only &&!$only{$plugin});return 0 unless (!defined$only || $plugin =~ m!$only!);return 0 if (keys%except && $except{$plugin});return 0 if (defined$except && $plugin =~ m!$except!);return 0 if defined$self->{max_depth}&& $depth>$self->{max_depth};return 0 if defined$self->{min_depth}&& $depth<$self->{min_depth};return 1}sub search_directories {my$self=shift;my@SEARCHDIR=@_;my@plugins;for my$dir (@SEARCHDIR){push@plugins,$self->search_paths($dir)}return@plugins}sub search_paths {my$self=shift;my$dir=shift;my@plugins;my$file_regex=$self->{'file_regex'}|| qr/\.pm$/;for my$searchpath (@{$self->{'search_path'}}){my$sp=catdir($dir,(split /::/,$searchpath));next unless (-e $sp && -d _);my@files=$self->find_files($sp);for my$file (@files){next unless ($file)=($file =~ /(.*$file_regex)$/);my ($name,$directory,$suffix)=fileparse($file,$file_regex);next if (!$self->{include_editor_junk}&& $self->_is_editor_junk($name));$directory=abs2rel($directory,$sp);my@pkg_dirs=();if ($name eq lc($name)|| $name eq uc($name)){my$pkg_file=catfile($sp,$directory,"$name$suffix");open PKGFILE,"<$pkg_file" or die "search_paths: Can't open $pkg_file: $!";my$in_pod=0;while (my$line=<PKGFILE>){$in_pod=1 if$line =~ m/^=\w/;$in_pod=0 if$line =~ /^=cut/;next if ($in_pod || $line =~ /^=cut/);next if$line =~ /^\s*#/;if ($line =~ m/^\s*package\s+(.*::)?($name)\s*;/i){@pkg_dirs=split /::/,$1 if defined $1;;$name=$2;last}}close PKGFILE}$directory =~ s/^[a-z]://i if($^O =~ /MSWin32|dos/);my@dirs=();if ($directory){($directory)=($directory =~ /(.*)/);@dirs=grep(length($_),splitdir($directory))unless$directory eq curdir();for my$d (reverse@dirs){my$pkg_dir=pop@pkg_dirs;last unless defined$pkg_dir;$d =~ s/\Q$pkg_dir\E/$pkg_dir/i}}else {$directory=""}my$plugin=join '::',$searchpath,@dirs,$name;next unless$plugin =~ m!(?:[a-z\d]+)[a-z\d]*!i;$self->handle_finding_plugin($plugin,\@plugins)}push@plugins,$self->handle_innerpackages($searchpath)}return@plugins}sub _is_editor_junk {my$self=shift;my$name=shift;return 1 if$name =~ /~$/;return 1 if$name =~ /^\.#/;return 1 if$name =~ /\.sw[po]$/;return 0}sub handle_finding_plugin {my$self=shift;my$plugin=shift;my$plugins=shift;my$no_req=shift || 0;return unless$self->_is_legit($plugin);unless (defined$self->{'instantiate'}|| $self->{'require'}){push @$plugins,$plugin;return}$self->{before_require}->($plugin)|| return if defined$self->{before_require};unless ($no_req){my$tmp=$@;my$res=eval {$self->_require($plugin)};my$err=$@;$@=$tmp;if ($err){if (defined$self->{on_require_error}){$self->{on_require_error}->($plugin,$err)|| return}else {return}}}$self->{after_require}->($plugin)|| return if defined$self->{after_require};push @$plugins,$plugin}sub find_files {my$self=shift;my$search_path=shift;my$file_regex=$self->{'file_regex'}|| qr/\.pm$/;my@files=();{local $_;File::Find::find({no_chdir=>1,follow=>$self->{'follow_symlinks'},wanted=>sub {return unless$File::Find::name =~ /$file_regex/;(my$path=$File::Find::name)=~ s#^\\./##;push@files,$path}},$search_path)}return@files}sub handle_inc_hooks {my$self=shift;my$path=shift;my@SEARCHDIR=@_;my@plugins;for my$dir (@SEARCHDIR){next unless ref$dir && eval {$dir->can('files')};for my$plugin ($dir->files){$plugin =~ s/\.pm$//;$plugin =~ s{/}{::}g;next unless$plugin =~ m!^${path}::!;$self->handle_finding_plugin($plugin,\@plugins)}}return@plugins}sub handle_innerpackages {my$self=shift;return ()if (exists$self->{inner}&&!$self->{inner});my$path=shift;my@plugins;for my$plugin (Devel::InnerPackage::list_packages($path)){$self->handle_finding_plugin($plugin,\@plugins,1)}return@plugins}sub _require {my$self=shift;my$pack=shift;eval "CORE::require $pack";die ($@)if $@;return 1}1;
-MODULE_PLUGGABLE_OBJECT
-
-$fatpacked{"Net/MQTT/Constants.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_CONSTANTS';
-  use strict;use warnings;package Net::MQTT::Constants;{$Net::MQTT::Constants::VERSION='1.130190'}use Carp qw/croak/;my%constants=(MQTT_CONNECT=>0x1,MQTT_CONNACK=>0x2,MQTT_PUBLISH=>0x3,MQTT_PUBACK=>0x4,MQTT_PUBREC=>0x5,MQTT_PUBREL=>0x6,MQTT_PUBCOMP=>0x7,MQTT_SUBSCRIBE=>0x8,MQTT_SUBACK=>0x9,MQTT_UNSUBSCRIBE=>0xa,MQTT_UNSUBACK=>0xb,MQTT_PINGREQ=>0xc,MQTT_PINGRESP=>0xd,MQTT_DISCONNECT=>0xe,MQTT_QOS_AT_MOST_ONCE=>0x0,MQTT_QOS_AT_LEAST_ONCE=>0x1,MQTT_QOS_EXACTLY_ONCE=>0x2,MQTT_CONNECT_ACCEPTED=>0,MQTT_CONNECT_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION=>1,MQTT_CONNECT_REFUSED_IDENTIFIER_REJECTED=>2,MQTT_CONNECT_REFUSED_SERVER_UNAVAILABLE=>3,MQTT_CONNECT_REFUSED_BAD_USER_NAME_OR_PASSWORD=>4,MQTT_CONNECT_REFUSED_NOT_AUTHORIZED=>5,);sub import {no strict qw/refs/;my$pkg=caller(0);for (keys%constants){my$v=$constants{$_};*{$pkg.'::'.$_}=sub () {$v}}for (qw/decode_byte encode_byte decode_short encode_short decode_string encode_string decode_remaining_length encode_remaining_length qos_string message_type_string dump_string connect_return_code_string/){*{$pkg.'::'.$_}=\&{$_}}}sub decode_remaining_length {my ($data,$offset)=@_;my$multiplier=1;my$v=0;my$d;do {$d=decode_byte($data,$offset);$v += ($d&0x7f)* $multiplier;$multiplier *= 128}while ($d&0x80);$v}sub encode_remaining_length {my$v=shift;my$o;my$d;do {$d=$v % 128;$v=int($v/128);if ($v){$d |=0x80}$o .= encode_byte($d)}while ($d&0x80);$o}sub decode_byte {my ($data,$offset)=@_;croak 'decode_byte: insufficient data' unless (length$data >= $$offset+1);my$res=unpack 'C',substr$data,$$offset,1;$$offset++;$res}sub encode_byte {pack 'C',$_[0]}sub decode_short {my ($data,$offset)=@_;croak 'decode_short: insufficient data' unless (length$data >= $$offset+2);my$res=unpack 'n',substr$data,$$offset,2;$$offset += 2;$res}sub encode_short {pack 'n',$_[0]}sub decode_string {my ($data,$offset)=@_;my$len=decode_short($data,$offset);croak 'decode_string: insufficient data' unless (length$data >= $$offset+$len);my$res=substr$data,$$offset,$len;$$offset += $len;$res}sub encode_string {pack "n/a*",$_[0]}sub qos_string {[qw/at-most-once at-least-once exactly-once reserved/]->[$_[0]]}sub message_type_string {[qw/Reserved0 Connect ConnAck Publish PubAck PubRec PubRel PubComp Subscribe SubAck Unsubscribe UnsubAck PingReq PingResp Disconnect Reserved15/]->[$_[0]]}sub dump_string {my$data=shift || '';my$prefix=shift || '';$prefix .= '  ';my@lines;while (length$data){my$d=substr$data,0,16,'';my$line=unpack 'H*',$d;$line =~ s/([A-F0-9]{2})/$1 /ig;$d =~ s/[^ -~]/./g;$line=sprintf "%-48s %s",$line,$d;push@lines,$line}scalar@lines ? "\n".$prefix.(join "\n".$prefix,@lines): ''}sub connect_return_code_string {['Connection Accepted','Connection Refused: unacceptable protocol version','Connection Refused: identifier rejected','Connection Refused: server unavailable','Connection Refused: bad user name or password','Connection Refused: not authorized',]->[$_[0]]|| 'Reserved'}
-NET_MQTT_CONSTANTS
-
-$fatpacked{"Net/MQTT/Message.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE';
-  use strict;use warnings;package Net::MQTT::Message;{$Net::MQTT::Message::VERSION='1.130190'}use Net::MQTT::Constants qw/:all/;use Module::Pluggable search_path=>__PACKAGE__,require=>1;our%types;for (plugins()){my$m=$_.'::message_type';next unless (defined &{$m});my$t=$_->message_type;if (exists$types{$t}){die 'Duplicate message_type number ',$t,":\n",'  ',$_," and\n",'  ',$types{$t},"\n"}$types{$t}=$_}sub new {my ($pkg,%p)=@_;my$type_pkg=exists$types{$p{message_type}}? $types{$p{message_type}}: $pkg;bless {%p },$type_pkg}sub new_from_bytes {my ($pkg,$bytes,$splice)=@_;my%p;return if (length$bytes < 2);my$offset=0;my$b=decode_byte($bytes,\$offset);$p{message_type}=($b&0xf0)>> 4;$p{dup}=($b&0x8)>>3;$p{qos}=($b&0x6)>>1;$p{retain}=($b&0x1);my$length;eval {$length=decode_remaining_length($bytes,\$offset)};return if ($@);if (length$bytes < $offset+$length){return}substr $_[1],0,$offset+$length,'' if ($splice);$p{remaining}=substr$bytes,$offset,$length;my$self=$pkg->new(%p);$self->_parse_remaining();$self}sub _parse_remaining {}sub message_type {shift->{message_type}}sub dup {shift->{dup}|| 0}sub qos {my$self=shift;defined$self->{qos}? $self->{qos}: $self->_default_qos}sub _default_qos {MQTT_QOS_AT_MOST_ONCE}sub retain {shift->{retain}|| 0}sub remaining {shift->{remaining}|| ''}sub _remaining_string {my ($self,$prefix)=@_;dump_string($self->remaining,$prefix)}sub _remaining_bytes {shift->remaining}sub string {my ($self,$prefix)=@_;$prefix='' unless (defined$prefix);my@attr;push@attr,qos_string($self->qos);for (qw/dup retain/){my$bool=$self->$_;push@attr,$_ if ($bool)}my$r=$self->_remaining_string($prefix);$prefix.message_type_string($self->message_type).'/'.(join ',',@attr).($r ? ' '.$r : '')}sub bytes {my ($self)=shift;my$o='';my$b=($self->message_type << 4)| ($self->dup << 3)| ($self->qos << 1)| $self->retain;$o .= encode_byte($b);my$remaining=$self->_remaining_bytes;$o .= encode_remaining_length(length$remaining);$o .= $remaining;$o}1;
-NET_MQTT_MESSAGE
-
-$fatpacked{"Net/MQTT/Message/ConnAck.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_CONNACK';
-  use strict;use warnings;package Net::MQTT::Message::ConnAck;{$Net::MQTT::Message::ConnAck::VERSION='1.130190'}use base 'Net::MQTT::Message';use Net::MQTT::Constants qw/:all/;sub message_type {2}sub connack_reserved {shift->{connack_reserved}|| 0}sub return_code {shift->{return_code}|| MQTT_CONNECT_ACCEPTED}sub _remaining_string {my ($self,$prefix)=@_;connect_return_code_string($self->return_code).' '.$self->SUPER::_remaining_string($prefix)}sub _parse_remaining {my$self=shift;my$offset=0;$self->{connack_reserved}=decode_byte($self->{remaining},\$offset);$self->{return_code}=decode_byte($self->{remaining},\$offset);substr$self->{remaining},0,$offset,''}sub _remaining_bytes {my$self=shift;my$o=encode_byte($self->connack_reserved);$o .= encode_byte($self->return_code)}1;
-NET_MQTT_MESSAGE_CONNACK
-
-$fatpacked{"Net/MQTT/Message/Connect.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_CONNECT';
-  use strict;use warnings;package Net::MQTT::Message::Connect;{$Net::MQTT::Message::Connect::VERSION='1.130190'}use base 'Net::MQTT::Message';use Net::MQTT::Constants qw/:all/;sub message_type {1}sub protocol_name {shift->{protocol_name}|| 'MQIsdp'}sub protocol_version {shift->{protocol_version}|| 3}sub user_name_flag {my$self=shift;$self->{user_name_flag}|| defined$self->{user_name}}sub password_flag {my$self=shift;$self->{password_flag}|| defined$self->{password}}sub will_retain {shift->{will_retain}|| 0}sub will_qos {shift->{will_qos}|| 0}sub will_flag {shift->{will_flag}|| 0}sub clean_session {my$self=shift;defined$self->{clean_session}? $self->{clean_session}: 1}sub connect_reserved_flag {shift->{connect_reserved_flag}|| 0}sub keep_alive_timer {shift->{keep_alive_timer}|| 60}sub client_id {shift->{client_id}|| 'Net::MQTT::Message['.$$.']'}sub will_topic {shift->{will_topic}}sub will_message {shift->{will_message}}sub user_name {shift->{user_name}}sub password {shift->{password}}sub _remaining_string {my ($self,$prefix)=@_;$self->protocol_name.'/'.$self->protocol_version.'/'.$self->client_id.($self->user_name_flag ? ' user='.$self->user_name : '').($self->password_flag ? ' pass='.$self->password : '').($self->will_flag ? ' will='.$self->will_topic.',"'.$self->will_message.'",'.$self->will_retain.','.qos_string($self->will_qos): '').' '.$self->SUPER::_remaining_string($prefix)}sub _parse_remaining {my$self=shift;my$offset=0;$self->{protocol_name}=decode_string($self->{remaining},\$offset);$self->{protocol_version}=decode_byte($self->{remaining},\$offset);my$b=decode_byte($self->{remaining},\$offset);$self->{user_name_flag}=($b&0x80)>> 7;$self->{password_flag}=($b&0x40)>> 6;$self->{will_retain}=($b&0x20)>> 5;$self->{will_qos}=($b&0x18)>> 3;$self->{will_flag}=($b&0x4)>> 2;$self->{clean_session}=($b&0x2)>> 1;$self->{connect_reserved_flag}=$b&0x1;$self->{keep_alive_timer}=decode_short($self->{remaining},\$offset);$self->{client_id}=decode_string($self->{remaining},\$offset);if ($self->will_flag){$self->{will_topic}=decode_string($self->{remaining},\$offset);$self->{will_message}=decode_string($self->{remaining},\$offset)}if ($self->user_name_flag){$self->{user_name}=decode_string($self->{remaining},\$offset)}if ($self->password_flag){$self->{password}=decode_string($self->{remaining},\$offset)}substr$self->{remaining},0,$offset,''}sub _remaining_bytes {my$self=shift;my$o=encode_string($self->protocol_name);$o .= encode_byte($self->protocol_version);$o .= encode_byte(($self->user_name_flag << 7)| ($self->password_flag << 6)| ($self->will_retain << 5)| ($self->will_qos << 3)| ($self->will_flag << 2)| ($self->clean_session << 1)| $self->connect_reserved_flag);$o .= encode_short($self->keep_alive_timer);$o .= encode_string($self->client_id);$o .= encode_string($self->will_topic)if ($self->will_flag);$o .= encode_string($self->will_message)if ($self->will_flag);$o .= encode_string($self->user_name)if ($self->user_name_flag);$o .= encode_string($self->password)if ($self->password_flag);$o}1;
-NET_MQTT_MESSAGE_CONNECT
-
-$fatpacked{"Net/MQTT/Message/Disconnect.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_DISCONNECT';
-  use strict;use warnings;package Net::MQTT::Message::Disconnect;{$Net::MQTT::Message::Disconnect::VERSION='1.130190'}use base 'Net::MQTT::Message';sub message_type {14}1;
-NET_MQTT_MESSAGE_DISCONNECT
-
-$fatpacked{"Net/MQTT/Message/JustMessageId.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_JUSTMESSAGEID';
-  use strict;use warnings;package Net::MQTT::Message::JustMessageId;{$Net::MQTT::Message::JustMessageId::VERSION='1.130190'}use base 'Net::MQTT::Message';use Net::MQTT::Constants qw/:all/;sub message_id {shift->{message_id}}sub _remaining_string {my ($self,$prefix)=@_;$self->message_id.' '.$self->SUPER::_remaining_string($prefix)}sub _parse_remaining {my$self=shift;my$offset=0;$self->{message_id}=decode_short($self->{remaining},\$offset);substr$self->{remaining},0,$offset,''}sub _remaining_bytes {my$self=shift;encode_short($self->message_id)}1;
-NET_MQTT_MESSAGE_JUSTMESSAGEID
-
-$fatpacked{"Net/MQTT/Message/PingReq.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_PINGREQ';
-  use strict;use warnings;package Net::MQTT::Message::PingReq;{$Net::MQTT::Message::PingReq::VERSION='1.130190'}use base 'Net::MQTT::Message';sub message_type {12}1;
-NET_MQTT_MESSAGE_PINGREQ
-
-$fatpacked{"Net/MQTT/Message/PingResp.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_PINGRESP';
-  use strict;use warnings;package Net::MQTT::Message::PingResp;{$Net::MQTT::Message::PingResp::VERSION='1.130190'}use base 'Net::MQTT::Message';sub message_type {13}1;
-NET_MQTT_MESSAGE_PINGRESP
-
-$fatpacked{"Net/MQTT/Message/PubAck.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_PUBACK';
-  use strict;use warnings;package Net::MQTT::Message::PubAck;{$Net::MQTT::Message::PubAck::VERSION='1.130190'}use base 'Net::MQTT::Message::JustMessageId';use Net::MQTT::Constants qw/:all/;sub message_type {4}1;
-NET_MQTT_MESSAGE_PUBACK
-
-$fatpacked{"Net/MQTT/Message/PubComp.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_PUBCOMP';
-  use strict;use warnings;package Net::MQTT::Message::PubComp;{$Net::MQTT::Message::PubComp::VERSION='1.130190'}use base 'Net::MQTT::Message::JustMessageId';use Net::MQTT::Constants qw/:all/;sub message_type {7}1;
-NET_MQTT_MESSAGE_PUBCOMP
-
-$fatpacked{"Net/MQTT/Message/PubRec.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_PUBREC';
-  use strict;use warnings;package Net::MQTT::Message::PubRec;{$Net::MQTT::Message::PubRec::VERSION='1.130190'}use base 'Net::MQTT::Message::JustMessageId';use Net::MQTT::Constants qw/:all/;sub message_type {5}1;
-NET_MQTT_MESSAGE_PUBREC
-
-$fatpacked{"Net/MQTT/Message/PubRel.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_PUBREL';
-  use strict;use warnings;package Net::MQTT::Message::PubRel;{$Net::MQTT::Message::PubRel::VERSION='1.130190'}use base 'Net::MQTT::Message::JustMessageId';use Net::MQTT::Constants qw/:all/;sub message_type {6}sub _default_qos {MQTT_QOS_AT_LEAST_ONCE}1;
-NET_MQTT_MESSAGE_PUBREL
-
-$fatpacked{"Net/MQTT/Message/Publish.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_PUBLISH';
-  use strict;use warnings;package Net::MQTT::Message::Publish;{$Net::MQTT::Message::Publish::VERSION='1.130190'}use base 'Net::MQTT::Message';use Net::MQTT::Constants qw/:all/;sub message_type {3}sub topic {shift->{topic}}sub message_id {shift->{message_id}}sub message {shift->{message}}sub _message_string {shift->{message}}sub _remaining_string {my$self=shift;$self->topic.($self->qos ? '/'.$self->message_id : '').' '.dump_string($self->_message_string)}sub _parse_remaining {my$self=shift;my$offset=0;$self->{topic}=decode_string($self->{remaining},\$offset);$self->{message_id}=decode_short($self->{remaining},\$offset)if ($self->qos);$self->{message}=substr$self->{remaining},$offset;$self->{remaining}=''}sub _remaining_bytes {my$self=shift;my$o=encode_string($self->topic);if ($self->qos){$o .= encode_short($self->message_id)}$o .= $self->message;$o}1;
-NET_MQTT_MESSAGE_PUBLISH
-
-$fatpacked{"Net/MQTT/Message/SubAck.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_SUBACK';
-  use strict;use warnings;package Net::MQTT::Message::SubAck;{$Net::MQTT::Message::SubAck::VERSION='1.130190'}use base 'Net::MQTT::Message';use Net::MQTT::Constants qw/:all/;sub message_type {9}sub message_id {shift->{message_id}}sub qos_levels {shift->{qos_levels}}sub _remaining_string {my ($self,$prefix)=@_;$self->message_id.'/'.(join ',',map {qos_string($_)}@{$self->qos_levels}).' '.$self->SUPER::_remaining_string($prefix)}sub _parse_remaining {my$self=shift;my$offset=0;$self->{message_id}=decode_short($self->{remaining},\$offset);while ($offset < length$self->{remaining}){push @{$self->{qos_levels}},decode_byte($self->{remaining},\$offset)&0x3}substr$self->{remaining},0,$offset,''}sub _remaining_bytes {my$self=shift;my$o=encode_short($self->message_id);for my$qos (@{$self->qos_levels}){$o .= encode_byte($qos)}$o}1;
-NET_MQTT_MESSAGE_SUBACK
-
-$fatpacked{"Net/MQTT/Message/Subscribe.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_SUBSCRIBE';
-  use strict;use warnings;package Net::MQTT::Message::Subscribe;{$Net::MQTT::Message::Subscribe::VERSION='1.130190'}use base 'Net::MQTT::Message';use Net::MQTT::Constants qw/:all/;sub message_type {8}sub _default_qos {MQTT_QOS_AT_LEAST_ONCE}sub message_id {shift->{message_id}}sub topics {shift->{topics}}sub _topics_string {join ',',map {$_->[0].'/'.qos_string($_->[1])}@{shift->{topics}}}sub _remaining_string {my ($self,$prefix)=@_;$self->message_id.' '.$self->_topics_string.' '.$self->SUPER::_remaining_string($prefix)}sub _parse_remaining {my$self=shift;my$offset=0;$self->{message_id}=decode_short($self->{remaining},\$offset);while ($offset < length$self->{remaining}){push @{$self->{topics}},[decode_string($self->{remaining},\$offset),decode_byte($self->{remaining},\$offset)]}substr$self->{remaining},0,$offset,''}sub _remaining_bytes {my$self=shift;my$o=encode_short($self->message_id);for my$r (@{$self->topics}){my ($name,$qos)=@$r;$o .= encode_string($name);$o .= encode_byte($qos)}$o}1;
-NET_MQTT_MESSAGE_SUBSCRIBE
-
-$fatpacked{"Net/MQTT/Message/UnsubAck.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_UNSUBACK';
-  use strict;use warnings;package Net::MQTT::Message::UnsubAck;{$Net::MQTT::Message::UnsubAck::VERSION='1.130190'}use base 'Net::MQTT::Message::JustMessageId';use Net::MQTT::Constants qw/:all/;sub message_type {11}1;
-NET_MQTT_MESSAGE_UNSUBACK
-
-$fatpacked{"Net/MQTT/Message/Unsubscribe.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_MESSAGE_UNSUBSCRIBE';
-  use strict;use warnings;package Net::MQTT::Message::Unsubscribe;{$Net::MQTT::Message::Unsubscribe::VERSION='1.130190'}use base 'Net::MQTT::Message';use Net::MQTT::Constants qw/:all/;sub message_type {10}sub _default_qos {MQTT_QOS_AT_LEAST_ONCE}sub message_id {shift->{message_id}}sub topics {shift->{topics}}sub _topics_string {join ',',@{shift->{topics}}}sub _remaining_string {my ($self,$prefix)=@_;$self->message_id.' '.$self->_topics_string.' '.$self->SUPER::_remaining_string($prefix)}sub _parse_remaining {my$self=shift;my$offset=0;$self->{message_id}=decode_short($self->{remaining},\$offset);while ($offset < length$self->{remaining}){push @{$self->{topics}},decode_string($self->{remaining},\$offset)}substr$self->{remaining},0,$offset,''}sub _remaining_bytes {my$self=shift;my$o=encode_short($self->message_id);for my$name (@{$self->topics}){$o .= encode_string($name)}$o}1;
-NET_MQTT_MESSAGE_UNSUBSCRIBE
-
-$fatpacked{"Net/MQTT/TopicStore.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_MQTT_TOPICSTORE';
-  use strict;use warnings;package Net::MQTT::TopicStore;{$Net::MQTT::TopicStore::VERSION='1.130190'}sub new {my$pkg=shift;my$self=bless {topics=>{}},$pkg;$self->add($_)foreach (@_);$self}sub add {my ($self,$topic_pattern)=@_;unless (exists$self->{topics}->{$topic_pattern}){$self->{topics}->{$topic_pattern}=_topic_to_regexp($topic_pattern)}$topic_pattern}sub delete {my ($self,$topic)=@_;delete$self->{topics}->{$topic}}sub values {my ($self,$topic)=@_;my@res=();for my$t (keys %{$self->{topics}}){my$re=$self->{topics}->{$t};next unless (defined$re ? $topic =~ $re : $topic eq $t);push@res,$t}return \@res}sub _topic_to_regexp {my$topic=shift;my$c;$topic=quotemeta$topic;$c += ($topic =~ s!\\/\\\+!\\/[^/]*!g);$c += ($topic =~ s!\\/\\#$!(?:\$|/.*)!);$c += ($topic =~ s!^\\\+\\/![^/]*\\/!g);$c += ($topic =~ s!^\\\+$![^/]*!g);$c += ($topic =~ s!^\\#$!.*!);$topic .= '$' unless ($topic =~ m!\$$!);unless ($c){return}qr/^$topic/}1;
-NET_MQTT_TOPICSTORE
+$fatpacked{"Kurado/Worker/MQ.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_WORKER_MQ';
+  package Kurado::Worker::MQ;
+  
+  use strict;
+  use warnings;
+  use base qw/Kurado::Agent::MQ/;
+  
+  
+  1;
+  
+KURADO_WORKER_MQ
 
 $fatpacked{"Pod/Escapes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'POD_ESCAPES';
   package Pod::Escapes;use strict;use warnings;use 5.006;use vars qw(%Code2USASCII %Name2character %Name2character_number %Latin1Code_to_fallback %Latin1Char_to_fallback $FAR_CHAR $FAR_CHAR_NUMBER $NOT_ASCII @ISA $VERSION @EXPORT_OK %EXPORT_TAGS);require Exporter;@ISA=('Exporter');$VERSION='1.06';@EXPORT_OK=qw(%Code2USASCII %Name2character %Name2character_number %Latin1Code_to_fallback %Latin1Char_to_fallback e2char e2charnum);%EXPORT_TAGS=('ALL'=>\@EXPORT_OK);$FAR_CHAR="?" unless defined$FAR_CHAR;$FAR_CHAR_NUMBER=ord($FAR_CHAR)unless defined$FAR_CHAR_NUMBER;$NOT_ASCII='A' ne chr(65)unless defined$NOT_ASCII;sub e2char {my$in=$_[0];return undef unless defined$in and length$in;if($in =~ m/^(0[0-7]*)$/s){$in=oct$in}elsif($in =~ m/^0?x([0-9a-fA-F]+)$/s){$in=hex $1}if($NOT_ASCII){unless($in =~ m/^\d+$/s){$in=$Name2character{$in};return undef unless defined$in;$in=ord$in}return$Code2USASCII{$in}|| $Latin1Code_to_fallback{$in}|| $FAR_CHAR}if($in =~ m/^\d+$/s){if($] < 5.007 and $in > 255){return$FAR_CHAR}else {return chr($in)}}else {return$Name2character{$in}}}sub e2charnum {my$in=$_[0];return undef unless defined$in and length$in;if($in =~ m/^(0[0-7]*)$/s){$in=oct$in}elsif($in =~ m/^0?x([0-9a-fA-F]+)$/s){$in=hex $1}if($in =~ m/^[0-9]+$/s){return 0 + $in}else {return$Name2character_number{$in}}}%Name2character_number=('lt'=>60,'gt'=>62,'quot'=>34,'amp'=>38,'apos'=>39,'sol'=>47,'verbar'=>124,'lchevron'=>171,'rchevron'=>187,'nbsp',160,'iexcl',161,'cent',162,'pound',163,'curren',164,'yen',165,'brvbar',166,'sect',167,'uml',168,'copy',169,'ordf',170,'laquo',171,'not',172,'shy',173,'reg',174,'macr',175,'deg',176,'plusmn',177,'sup2',178,'sup3',179,'acute',180,'micro',181,'para',182,'middot',183,'cedil',184,'sup1',185,'ordm',186,'raquo',187,'frac14',188,'frac12',189,'frac34',190,'iquest',191,'Agrave',192,'Aacute',193,'Acirc',194,'Atilde',195,'Auml',196,'Aring',197,'AElig',198,'Ccedil',199,'Egrave',200,'Eacute',201,'Ecirc',202,'Euml',203,'Igrave',204,'Iacute',205,'Icirc',206,'Iuml',207,'ETH',208,'Ntilde',209,'Ograve',210,'Oacute',211,'Ocirc',212,'Otilde',213,'Ouml',214,'times',215,'Oslash',216,'Ugrave',217,'Uacute',218,'Ucirc',219,'Uuml',220,'Yacute',221,'THORN',222,'szlig',223,'agrave',224,'aacute',225,'acirc',226,'atilde',227,'auml',228,'aring',229,'aelig',230,'ccedil',231,'egrave',232,'eacute',233,'ecirc',234,'euml',235,'igrave',236,'iacute',237,'icirc',238,'iuml',239,'eth',240,'ntilde',241,'ograve',242,'oacute',243,'ocirc',244,'otilde',245,'ouml',246,'divide',247,'oslash',248,'ugrave',249,'uacute',250,'ucirc',251,'uuml',252,'yacute',253,'thorn',254,'yuml',255,'fnof',402,'Alpha',913,'Beta',914,'Gamma',915,'Delta',916,'Epsilon',917,'Zeta',918,'Eta',919,'Theta',920,'Iota',921,'Kappa',922,'Lambda',923,'Mu',924,'Nu',925,'Xi',926,'Omicron',927,'Pi',928,'Rho',929,'Sigma',931,'Tau',932,'Upsilon',933,'Phi',934,'Chi',935,'Psi',936,'Omega',937,'alpha',945,'beta',946,'gamma',947,'delta',948,'epsilon',949,'zeta',950,'eta',951,'theta',952,'iota',953,'kappa',954,'lambda',955,'mu',956,'nu',957,'xi',958,'omicron',959,'pi',960,'rho',961,'sigmaf',962,'sigma',963,'tau',964,'upsilon',965,'phi',966,'chi',967,'psi',968,'omega',969,'thetasym',977,'upsih',978,'piv',982,'bull',8226,'hellip',8230,'prime',8242,'Prime',8243,'oline',8254,'frasl',8260,'weierp',8472,'image',8465,'real',8476,'trade',8482,'alefsym',8501,'larr',8592,'uarr',8593,'rarr',8594,'darr',8595,'harr',8596,'crarr',8629,'lArr',8656,'uArr',8657,'rArr',8658,'dArr',8659,'hArr',8660,'forall',8704,'part',8706,'exist',8707,'empty',8709,'nabla',8711,'isin',8712,'notin',8713,'ni',8715,'prod',8719,'sum',8721,'minus',8722,'lowast',8727,'radic',8730,'prop',8733,'infin',8734,'ang',8736,'and',8743,'or',8744,'cap',8745,'cup',8746,'int',8747,'there4',8756,'sim',8764,'cong',8773,'asymp',8776,'ne',8800,'equiv',8801,'le',8804,'ge',8805,'sub',8834,'sup',8835,'nsub',8836,'sube',8838,'supe',8839,'oplus',8853,'otimes',8855,'perp',8869,'sdot',8901,'lceil',8968,'rceil',8969,'lfloor',8970,'rfloor',8971,'lang',9001,'rang',9002,'loz',9674,'spades',9824,'clubs',9827,'hearts',9829,'diams',9830,'OElig',338,'oelig',339,'Scaron',352,'scaron',353,'Yuml',376,'circ',710,'tilde',732,'ensp',8194,'emsp',8195,'thinsp',8201,'zwnj',8204,'zwj',8205,'lrm',8206,'rlm',8207,'ndash',8211,'mdash',8212,'lsquo',8216,'rsquo',8217,'sbquo',8218,'ldquo',8220,'rdquo',8221,'bdquo',8222,'dagger',8224,'Dagger',8225,'permil',8240,'lsaquo',8249,'rsaquo',8250,'euro',8364,);{%Name2character=();my($name,$number);while(($name,$number)=each%Name2character_number){if($] < 5.007 and $number > 255){$Name2character{$name}=$FAR_CHAR}else {$Name2character{$name}=chr$number}}$Name2character{'lt' }='<';$Name2character{'gt' }='>';$Name2character{'quot'}='"';$Name2character{'amp' }='&';$Name2character{'apos'}="'";$Name2character{'sol' }='/';$Name2character{'verbar'}='|'}%Code2USASCII=(32,' ',33,'!',34,'"',35,'#',36,'$',37,'%',38,'&',39,"'",40,'(',41,')',42,'*',43,'+',44,',',45,'-',46,'.',47,'/',48,'0',49,'1',50,'2',51,'3',52,'4',53,'5',54,'6',55,'7',56,'8',57,'9',58,':',59,';',60,'<',61,'=',62,'>',63,'?',64,'@',65,'A',66,'B',67,'C',68,'D',69,'E',70,'F',71,'G',72,'H',73,'I',74,'J',75,'K',76,'L',77,'M',78,'N',79,'O',80,'P',81,'Q',82,'R',83,'S',84,'T',85,'U',86,'V',87,'W',88,'X',89,'Y',90,'Z',91,'[',92,"\\",93,']',94,'^',95,'_',96,'`',97,'a',98,'b',99,'c',100,'d',101,'e',102,'f',103,'g',104,'h',105,'i',106,'j',107,'k',108,'l',109,'m',110,'n',111,'o',112,'p',113,'q',114,'r',115,'s',116,'t',117,'u',118,'v',119,'w',120,'x',121,'y',122,'z',123,'{',124,'|',125,'}',126,'~',);%Latin1Code_to_fallback=();@Latin1Code_to_fallback{0xA0 .. 0xFF}=(' ',qq{!},qq{C/},'PS',qq{\$?},qq{Y=},qq{|},'SS',qq{"},qq{(c)},'a',qq{<<},qq{!},"",qq{(r)},qq{-},'deg',qq{+-},'2','3',qq{'},'u','P',qq{*},qq{,},'1','o',qq{>>},qq{1/4},qq{1/2},qq{3/4},qq{?},'A','A','A','A','A','A','AE','C','E','E','E','E','I','I','I','I','D','N','O','O','O','O','O','x','O','U','U','U','U','U','Th','ss','a','a','a','a','a','a','ae','c','e','e','e','e','i','i','i','i','d','n','o','o','o','o','o',qq{/},'o','u','u','u','u','y','th','y',);{%Latin1Char_to_fallback=();my($k,$v);while(($k,$v)=each%Latin1Code_to_fallback){$Latin1Char_to_fallback{chr$k}=$v}}1;
@@ -1830,20 +1874,22 @@ use Pod::Usage;
 
 use Proc::Pidfile;
 use Kurado::Agent;
-use Kurado::Agent::Util;
-use Kurado::Agent::MQ;
+use Kurado::Util;
+use Kurado::MQ;
 use Kurado::Agent::Collector;
 use Kurado::Agent::Config;
 
 my $interval = 1;
+my $max_delay = 0;
 Getopt::Long::Configure ("no_ignore_case");
 GetOptions(
-    "self=s"     => \my $self_ip,
+    "self-ip=s"     => \my $self_ip,
     "conf-d=s"   => \my $config_dir,
     "dump"       => \my $dump,
-    "mqtt=s"     => \my $mqtt,
-    "pidfile=s"   => \my $pidfile,
+    "mq=s"       => \my $mq,
+    "pidfile=s"  => \my $pidfile,
     "interval|i=i" => \$interval,
+    "max-delay=i" => \$max_delay,
     "h|help"     => \my $help,
     "v|version"  => \my $version,
 );
@@ -1870,11 +1916,17 @@ if ( $config_dir ) {
 my $collector = Kurado::Agent::Collector->new($plugins);
 
 if ( $dump ) {
-    print $collector->collect;
+    my $message;
+    eval {
+        $message = $collector->collect("dump");
+        $message .= $collector->collect_plugins("dump");
+    };
+    die "$@\n" if $@;
+    print $message;
     exit;
 }
 
-if ( !$self_ip || !$mqtt || !$interval) {
+if ( !$self_ip || !$mq || !$interval) {
     pod2usage(-verbose=>0,-exitval=>1);
 }
 
@@ -1886,19 +1938,21 @@ if ( $pidfile ) {
 $0 = "kurado_agent master";
 supervisor(sub {
     $0 = "kurado_agent";
-    my $mq = Kurado::Agent::MQ->new(server => $mqtt);
-    $self_ip =~ s/\./_/g; # mqtt replace "." to '/'
+    my $mq = Kurado::MQ->new(server => $mq);
     local $SIG{TERM}  = sub {
         $mq->{stop_loop} = 1;
     };
     $mq->timetick_publisher(
         $interval*60,
+        $max_delay,
         sub {
-            my $message = eval {
-                $collector->collect;
+            my $message;
+            eval {
+                $message = $collector->collect($self_ip);
+                $message .= $collector->collect_plugins($self_ip);
             };
             die "failed collect metrics: $@\n" if $@;
-            return ['kurado/update/'.$self_ip, $message];
+            return ['kurado-update', $message];
         }
     );
     exit();
@@ -1918,7 +1972,7 @@ kurado_agent - Kurado agent
   % kurado_agent --dump
   
   # run 
-  % kurado_agent --interval 1 --self ip.address.of.myself --mqtt 127.0.0.1:1887 --conf-d /etc/kurado_agent/conf.d
+  % kurado_agent --interval 1 --self-ip ip.address.of.myself --mq 127.0.0.1:6379 --conf-d /etc/kurado_agent/conf.d
 
 =head1 DESCRIPTION
 
@@ -1936,13 +1990,17 @@ path to config directory. files shuold be '*.toml' (optional)
 
 interval minutes default 1 (60sec)
 
-=item --mqtt
+=item --mq
 
-MQTT broker server
+Redis Server for message queue
 
 =item --pidfile
 
 pidfile
+
+=item --max-delay
+
+max delay second of interval metrics sending. for avoiding thundering herd of "0" seconds
 
 =item -v --version
 

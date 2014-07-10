@@ -2,7 +2,6 @@ requires 'perl' => '5.008002';
 requires 'Getopt::Long';
 requires 'Pod::Usage', '1.63';
 requires 'Cwd::Guard';
-requires 'Net::MQTT::Message';
 requires 'TOML::Parser';
 requires 'boolean', '0.38';
 requires 'Proc::Pidfile';
