@@ -15,7 +15,7 @@ sub new {
     my %args = ref $_ ? %{$_[0]} : @_;
     %args = (
         server => '127.0.0.1:6379',
-        keep_alive_timer => 30,
+        keep_alive_timer => 180,
         timeout => 10,
         %args,
     );
