@@ -1,0 +1,6 @@
+---
+metrics_config:
+metrics:
+- base
+- mysql
+- innodb

@@ -1,0 +1,56 @@
+---
+config:
+  # Redis サーバの host:port
+  redis: 127.0.0.1:6379
+
+  # rrdファイルを設置するディレクトリ「/」から始まると絶対パス
+  data_dir: data
+
+  # 監視項目の設定ファイルを設置するディレクトリ。「/」から始まると絶対パス
+  host_roll_dir: sample_rolls
+
+  # データの取得とrrd graphの定義をいれておくディレクトリ。複数指定可能
+  metrics_plugin_dir:
+  - metrics_plugins
+  - metrics_site_plugins
+
+metrics_config:
+  # 共通で使う設定
+  MYSQL:
+    user: root
+    password: ""
+
+---
+service: admin
+servers:
+- roll: base.yml
+  hosts:
+  - 192.168.55.10 dev1
+  - 192.168.55.11 dev2
+
+---
+service: new service
+servers:
+- roll: httpd.yml
+  label: www
+  hosts:
+  - 192.168.51.10 www1
+  - 192.168.51.11 www2
+- roll: httpd_memcached.yml
+  hosts:
+  - 192.168.51.12 www3
+  - 192.168.51.13 www4
+- roll: mysql.yml
+  label: db
+  hosts:
+  - 192.168.51.14 db1
+  - 192.168.51.15 db2
+- roll: base.yaml
+  label: etc
+  hosts:
+  - 192.168.51.90 batch1 batch
+
+
+
+
+

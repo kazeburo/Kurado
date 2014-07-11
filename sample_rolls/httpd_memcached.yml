@@ -1,0 +1,6 @@
+---
+metrics_config:
+metrics:
+- base
+- http:80
+- memcached:11211
