@@ -7,12 +7,17 @@ config:
   data_dir: data
 
   # 監視項目の設定ファイルを設置するディレクトリ。「/」から始まると絶対パス
-  host_roll_dir: sample_rolls
+  rolls_dir: sample_rolls
 
   # データの取得とrrd graphの定義をいれておくディレクトリ。複数指定可能
   metrics_plugin_dir:
   - metrics_plugins
   - metrics_site_plugins
+
+  # プロセス数など
+  web_worker: 5
+  update_worker: 2
+  fetch_worker: 2
 
 metrics_config:
   # 共通で使う設定
@@ -21,12 +26,25 @@ metrics_config:
     password: ""
 
 ---
+# サービス名
 service: admin
 servers:
+# roll: 何をmonitoringするかの設定が書かれたファイルを指定する。rolls_dirの中から探す
 - roll: base.yml
+# label: サブカテゴリのようなもの
+  label: dev
+# hostsは ip[SPACE]hostname[SPACE]以下コメント
   hosts:
   - 192.168.55.10 dev1
   - 192.168.55.11 dev2
+
+---
+service: intra
+servers:
+- roll: base.yml
+  hosts:
+  - 192.168.57.10 app1 bts
+  - 192.168.57.11 app2 wiki
 
 ---
 service: new service
@@ -45,10 +63,13 @@ servers:
   hosts:
   - 192.168.51.14 db1
   - 192.168.51.15 db2
-- roll: base.yaml
+- roll: base.yml
   label: etc
   hosts:
   - 192.168.51.90 batch1 batch
+
+
+
 
 
 
