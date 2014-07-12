@@ -179,7 +179,17 @@ sub merge_metrics_config {
     };
 }
 
-sub service_configs {
+sub services {
+    $_[0]->{services};
+}
+
+sub dump {
+    my $self = shift;
+    +{
+        config => $self->config->dump,
+        metrics_config => $self->metrics_config,
+        services => $self->services
+    }
 }
 
 1;

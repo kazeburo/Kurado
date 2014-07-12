@@ -99,5 +99,12 @@ around 'metrics_plugin_dir' => sub {
 
 __PACKAGE__->meta->make_immutable();
 
+sub dump {
+    my $self = shift;
+    my %dump;
+    $dump{$_} = $self->$_ for qw/_path redis data_dir rolls_dir metrics_plugin_dir web_worker update_worker fetch_worker/;
+    return \%dump;
+}
+
 1;
 
