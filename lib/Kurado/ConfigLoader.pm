@@ -122,7 +122,7 @@ sub parse_host {
         comments => $comments,
         roll => $roll_name,
         metrics_config => $roll->{metrics_config},
-        metrics => $roll->{metrics},
+        plugins => $roll->{plugins},
     };
 }
 
@@ -140,25 +140,25 @@ sub load_roll {
         die "roll config shuold be HASH(or dictionary):\n" . yaml_head($roll_config); 
     }
     my $metrics_config = $self->merge_metrics_config($roll_config->{metrics_config} || {});
-    my @metrics;
+    my @plugins;
     for ( @{$roll_config->{metrics} || []} ) {
-        push @metrics, $self->parse_metrics($_);
+        push @plugins, $self->parse_plugin($_);
     }    
     
     my $roll = {
         metrics_config => $metrics_config,
-        metrics => \@metrics
+        plugins => \@plugins
     };    
     $ROLL_CACHE{$roll_name} = $roll;
     return $roll;
 }
 
-sub parse_metrics {
+sub parse_plugin {
     my ($self, $line) = @_;
-    my ( $metrics, @arguments )  = split /:/, $line;
-    die "cannot find merics name: in '$line'\n" unless $metrics;
+    my ( $plugin, @arguments )  = split /:/, $line;
+    die "cannot find plugin name: in '$line'\n" unless $plugin;
     return {
-        metrics => $metrics,
+        plugin => $plugin,
         arguments => \@arguments,
     };
 }

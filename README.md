@@ -212,3 +212,128 @@ process.metrics.fork.derive     39234   1404871619
 
 これから
 
+#Kurado plugin protocol
+
+## API
+
+metricsを取得する系 metrics fetcher
+
+- fetcher本体
+
+metricsを表示する系
+
+- グラフのリスト + meta情報の表示
+- graph definition
+
+## pluginに渡されるデータ
+
+- metrics_config
+- address hostname comments
+- plugin arguments
+
+## Protocol
+
+- $ENV{'kurodo.metrics_config'}
+- $ENV{'kurodo.metrics_config_json'} 今のところやらない。perlじゃない場合に使う。execするとps eで漏れるのでbase64ぐらいするかな
+- コマンド引数に
+-- --address => $address
+-- --hostsname => $hostname
+-- --comments => $comment あれば
+-- --plugin-arguments => roll_configのmetricsの:以降のやつ。あれば複数個。なければない
+-- --graph => graph definition apiの時だけ
+
+
+## API
+
+### metrics-fetcher
+
+metricsを取得して、kurodo_agentが返すとの同じフォーマットで返す。
+
+### metrics-list
+
+metricsのリストとグラフ付随情報
+
+tsvで返す
+
+```
+graph-key[TAB]graph-title[TAB]key[TAB]value[TAB]key[TAB]value..
+```
+
+- graph-key 次のmetrics-graph apiに渡されるkey (必須)
+- graph-title HTML上にh4で表示するグラフのタイトル。なかったら表示しない
+- key,value グラフ付随情報
+
+### metrics-graph
+
+RRDtoolのグラフ定義を返す
+1行目はグラフの縦軸のラベル
+
+```
+TCP Established
+DEF:n=<%RRD_FOR tcp-established.gauge %>:n:AVERAGE
+AREA:n#00C000:Established
+GPRINT:n:LAST:Cur\:%6.0lf
+GPRINT:n:AVERAGE:Ave\:%6.0lf
+GPRINT:n:MAX:Max\:%6.0lf
+GPRINT:n:MIN:Min\:%6.0lf\l
+```
+
+テンプレート的に以下が使える
+
+- `<%RRD_FOR ${metrics_key}.{gauge,counter,derive,absolute} %>` plugin,ipは自動補完。rrdファイルへのpath
+- `<%RRD_EX ${plugin} ${ip} ${metrics_key}.{gauge,counter,derive,absolute} %>` 他のplugin,ipのrrdファイルへのpath
+
+## rrdファイルのディレクトリ構成
+
+~/data/$plugin/ip/${metrics_key}.{gauge,counter,derive,absolute}.rrd
+
+## rrdファイルの定義
+
+AVERAGEだけでいいよね
+
+    #RRA:CFタイプ:xff:steps:rows
+    # xff Unknownの率
+    # steps 集約するステップ数
+    # rows保存する数
+    my @param = (
+        '--start', $timestamp - 10,
+        '--step', '60',
+        "DS:n:${dst}:120:U:U",
+        'RRA:AVERAGE:0.5:1:2880',    #1分   1分    2日 2*24*60/(1*1)
+        'RRA:AVERAGE:0.5:5:10080',   #5分   5分    35日 35*24*60/(5*1)
+        'RRA:AVERAGE:0.5:60:4800',   #1時間  60分  200日 200*24*60/(60*1)
+        'RRA:AVERAGE:0.5:1440:1100', #24時間 1440分 1100日
+    );
+
+だいたいこれで 150KB ぐらい
+
+## plugin apiメモ
+
+- pluginは起動時に読み込まれる
+- __DATA__は使いたい
+- sub {apiname} { .. } をいくつか書くでいいかな
+-- 単体でのテストしにくい => test用のscriptをつくる
+- CGIなプロトコルにするのはどうか？
+-- perl以外の言語でpluginが書ける。でも必要ないよねぇ
+
+- 必要なapiは
+-- is_passive
+-- fetcher本体
+-- グラフのリスト + meta情報の表示
+-- graph definition
+
+- テストツールの機能
+-- fetcherの有無を返す(is_passive)
+-- metricsをfetchして結果を表示
+-- webサーバを起動して、グラフのサンプル表示
+
+- pluginを2つに分けるのはどうか
+-- is_passiveのかわりにfetchを消す
+-- 先にfetchだけつくって、あとからdisplayのpluginを作るとかできる
+-- 既存のデータをつかって、表示だけするpluginとかもできる
+-- pluginが存在してないことのエラーは？
+--- fetchだけ、displayだけ両方ともあるので、両方存在しなければエラー
+
+- plugin 2つに分けるならCGI方式でもいいのかな
+
+
