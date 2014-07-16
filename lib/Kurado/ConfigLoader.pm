@@ -6,6 +6,16 @@ use utf8;
 use YAML::XS qw//;
 use File::Spec;
 use Kurado::Config;
+use Mouse;
+
+has 'path' => (
+    is => 'ro',
+    isa => 'Str',
+    required => 1
+);
+
+__PACKAGE__->meta->make_immutable();
+
 
 sub yaml_head {
     my $ref = shift;
@@ -15,13 +25,9 @@ sub yaml_head {
     join("\n", map { "> $_"} splice(@dump,0,8), (@dump > 8 ? "..." : ""))."\n";
 }
 
-sub new {
-    my ($class,$path) = @_;
-    my $self = bless {
-        path => $path,
-    }, $class;
+sub BUILD {
+    my ($self) = @_;
     $self->parse_file();
-    $self;
 }
 
 sub parse_file {
@@ -183,12 +189,17 @@ sub services {
     $_[0]->{services};
 }
 
+sub sorted_services {
+    my $self = shift;
+    [ map { { service => $_, sections => $self->services->{$_} } } sort { lc($a) cmp lc($b) } keys %{$self->services}]
+}
+
 sub dump {
     my $self = shift;
     +{
         config => $self->config->dump,
         metrics_config => $self->metrics_config,
-        services => $self->services
+        services => $self->sorted_services,
     }
 }
 

@@ -204,14 +204,6 @@ process.metrics.fork.derive     39234   1404871619
 
 これから
 
-# グラフ設定
-
-これから
-
-# pull設定
-
-これから
-
 #Kurado plugin protocol
 
 ## API
@@ -230,24 +222,27 @@ metricsを表示する系
 - metrics_config
 - address hostname comments
 - plugin arguments
+- metrics meta (サーバ情報)
 
 ## Protocol
 
 - $ENV{'kurodo.metrics_config'}
 - $ENV{'kurodo.metrics_config_json'} 今のところやらない。perlじゃない場合に使う。execするとps eで漏れるのでbase64ぐらいするかな
+- $ENV{'kurodo.metrics_meta'} *metrics-list metrics-graphのときだけ
+- $ENV{'kurodo.metrics_meta_json'} 今のところやらない。perlじゃない場合に使う。execするとps eで漏れるのでbase64ぐらいするかな
 - コマンド引数に
--- --address => $address
--- --hostsname => $hostname
--- --comments => $comment あれば
--- --plugin-arguments => roll_configのmetricsの:以降のやつ。あれば複数個。なければない
--- --graph => graph definition apiの時だけ
+  - --address => $address
+  - --hostsname => $hostname
+  - --comments => $comment あれば
+  - --plugin-arguments => roll_configのmetricsの:以降のやつ。あれば複数個。なければない
+  - --graph => graph, metrics-graph apiの時だけ
 
 
 ## API
 
 ### metrics-fetcher
 
-metricsを取得して、kurodo_agentが返すとの同じフォーマットで返す。
+metricsを取得して、kurodo_agentのpluginが返すとの同じフォーマットで返す。
 
 ### metrics-list
 
@@ -260,6 +255,7 @@ graph-key[TAB]graph-title[TAB]key[TAB]value[TAB]key[TAB]value..
 ```
 
 - graph-key 次のmetrics-graph apiに渡されるkey (必須)
+- graphを表示しない場合はgraph-keyに空文字をいれることができる
 - graph-title HTML上にh4で表示するグラフのタイトル。なかったら表示しない
 - key,value グラフ付随情報
 
@@ -289,7 +285,6 @@ GPRINT:n:MIN:Min\:%6.0lf\l
 
 ## rrdファイルの定義
 
-AVERAGEだけでいいよね
 
     #RRA:CFタイプ:xff:steps:rows
     # xff Unknownの率
@@ -299,13 +294,21 @@ AVERAGEだけでいいよね
         '--start', $timestamp - 10,
         '--step', '60',
         "DS:n:${dst}:120:U:U",
-        'RRA:AVERAGE:0.5:1:2880',    #1分   1分    2日 2*24*60/(1*1)
-        'RRA:AVERAGE:0.5:5:10080',   #5分   5分    35日 35*24*60/(5*1)
-        'RRA:AVERAGE:0.5:60:4800',   #1時間  60分  200日 200*24*60/(60*1)
+        'RRA:AVERAGE:0.5:1:2880',    #1分   1分    2日 2*24*60/(1*1) daily用
+        'RRA:AVERAGE:0.5:5:2880',   #5分   5分    10日 10*24*60/(5*1) weekly用
+        'RRA:AVERAGE:0.5:60:960',   #1時間  60分  40日 40*24*60/(60*1) monthly用
         'RRA:AVERAGE:0.5:1440:1100', #24時間 1440分 1100日
+        'RRA:MIN:0.5:1:2880', 
+        'RRA:MIN:0.5:5:2880',
+        'RRA:MIN:0.5:60:960',
+        'RRA:MIN:0.5:1440:1100',
+        'RRA:MAX:0.5:1:2880', 
+        'RRA:MAX:0.5:5:2880',
+        'RRA:MAX:0.5:60:960',
+        'RRA:MAX:0.5:1440:1100',
     );
 
-だいたいこれで 150KB ぐらい
+だいたいこれで 190KB ぐらい
 
 ## plugin apiメモ
 
@@ -334,6 +337,6 @@ AVERAGEだけでいいよね
 -- pluginが存在してないことのエラーは？
 --- fetchだけ、displayだけ両方ともあるので、両方存在しなければエラー
 
-- plugin 2つに分けるならCGI方式でもいいのかな
+- plugin 2つに分けるならCGI::Compie方式でもいいのかな
 
 

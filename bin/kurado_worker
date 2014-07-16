@@ -1,0 +1,89 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use utf8;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use Getopt::Long;
+use Pod::Usage;
+use Log::Minimal;
+
+use Kurado;
+use Kurado::ConfigLoader;
+use Kurado::Worker;
+
+$Log::Minimal::AUTODUMP = 1;
+
+my $interval = 1;
+my $max_delay = 0;
+Getopt::Long::Configure ("no_ignore_case");
+GetOptions(
+    "c|config=s"   => \my $path,
+    "h|help"     => \my $help,
+    "v|version"  => \my $version,
+);
+
+if ( $version ) {
+    print "Kurado version $Kurado::VERSION\n";
+    print "Try `kurado_worker --help` for more options.\n\n";
+    exit 0;
+}
+
+if ( $help ) {
+    pod2usage(-verbose=>2,-exitval=>0);
+}
+
+if ( !$path ) {
+    pod2usage(-verbose=>0,-exitval=>1);
+}
+
+infof("loading config..");
+my $loader = Kurado::ConfigLoader->new(path=>$path);
+
+infof("run workers");
+my $worker = Kurado::Worker->new(config_loader=>$loader);
+$worker->run;
+
+__END__
+
+=head1 NAME
+
+kurado_worker - Kurado agent
+
+=head1 SYNOPSIS
+
+  
+  # run 
+  % kurado_worker -c config.yml
+
+=head1 DESCRIPTION
+
+Kurado worker
+
+=head1 OPTIONS
+
+=over 4
+
+=item -v --version
+
+Display version
+
+=item -h --help
+
+Display help
+
+=back
+
+=head1 AUTHOR
+
+Masahiro Nagano <kazeburo {at} gmail.com>
+
+=head1 LICENSE
+
+This library is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+
+# Local Variables:
+# mode: cperl
+# End:

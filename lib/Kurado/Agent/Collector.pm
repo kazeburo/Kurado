@@ -263,7 +263,7 @@ sub disk_io {
         $self->metrics->{"disk-io-".$device."-read-ios.derive"} = $dstats[0];
         $self->metrics->{"disk-io-".$device."-read-sectors.derive"} = $dstats[2];
         $self->metrics->{"disk-io-".$device."-write-ios.derive"} = $dstats[4];
-        $self->metrics->{"disk-io-".$device."-write-sectors.device"} = $dstats[6];
+        $self->metrics->{"disk-io-".$device."-write-sectors.derive"} = $dstats[6];
     }
     $self->meta->{"disk-io-devices"} = join ",", @devices if @devices;
 }
