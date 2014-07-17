@@ -226,9 +226,9 @@ metricsを表示する系
 
 ## Protocol
 
-- $ENV{'kurodo.metrics_config'}
+- $Kurado::Plugin::BRIDGE{'kurodo.metrics_config'}
 - $ENV{'kurodo.metrics_config_json'} 今のところやらない。perlじゃない場合に使う。execするとps eで漏れるのでbase64ぐらいするかな
-- $ENV{'kurodo.metrics_meta'} *metrics-list metrics-graphのときだけ
+- $Kurado::Plugin::BRIDGE{'kurodo.metrics_meta'}
 - $ENV{'kurodo.metrics_meta_json'} 今のところやらない。perlじゃない場合に使う。execするとps eで漏れるのでbase64ぐらいするかな
 - コマンド引数に
   - --address => $address
@@ -248,16 +248,9 @@ metricsを取得して、kurodo_agentのpluginが返すとの同じフォーマ�
 
 metricsのリストとグラフ付随情報
 
-tsvで返す
-
 ```
-graph-key[TAB]graph-title[TAB]key[TAB]value[TAB]key[TAB]value..
+あとで
 ```
-
-- graph-key 次のmetrics-graph apiに渡されるkey (必須)
-- graphを表示しない場合はgraph-keyに空文字をいれることができる
-- graph-title HTML上にh4で表示するグラフのタイトル。なかったら表示しない
-- key,value グラフ付随情報
 
 ### metrics-graph
 

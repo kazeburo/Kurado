@@ -9,6 +9,7 @@ use File::Spec;
 use File::Basename;
 use File::Path qw/make_path/;
 use Data::Validator;
+use URI::Escape;
 
 has 'data_dir' => (
     is => 'ro',
@@ -58,7 +59,7 @@ sub _create {
 
 sub update {
     state $rule = Data::Validator->new(
-        plugin => 'Str',
+        plugin => 'Kurado::Object::Plugin',
         address => 'Str',
         key => 'Str',
         timestamp => 'Str',
@@ -68,9 +69,9 @@ sub update {
 
     my $path = File::Spec->catfile(
         $self->data_dir,
-        $args->{plugin},
         $args->{address},
-        $args->{key} . '.rrd'
+        $args->{plugin}->plugin_identifier_escaped,
+        uri_escape($args->{key}) . '.rrd'
     );
 
     $self->_create($path);

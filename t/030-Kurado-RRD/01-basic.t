@@ -1,15 +1,19 @@
 use strict;
 use Test::More;
 use File::Temp qw/tempdir/;
-use Kurado::RRD;
 use File::Zglob;
 use File::Spec;
+use Kurado::RRD;
+use Kurado::Object::Plugin;
 
 my $tempdir = tempdir( CLEANUP => 1 );
 
 my $rrd = Kurado::RRD->new(data_dir => $tempdir );
 ok($rrd->update(
-    plugin => "test",
+    plugin => Kurado::Object::Plugin->new(
+        plugin => "test",
+        arguments => [],
+    ),
     address => '127.0.0.1',
     key => "test1.gauge",
     value => "12345",

@@ -141,42 +141,43 @@ sub compile {
     return $sub;
 }
 
+sub jdclone {
+    my $ref = shift;
+    $_JSON->decode($_JSON->encode($ref));
+}
+
 sub run {
     state $rule = Data::Validator->new(
-        plugin => 'Str',
+        host => 'Kurado::Object::Host',
+        plugin => 'Kurado::Object::Plugin',
         type => 'Str',
-        address => 'Str',
-        hostname => 'Str',
-        comments => { isa => 'Str', optional => 1},
-        plugin_arguments => 'ArrayRef[Str]',
-        metrics_config => 'HashRef[Any]',
         graph => { isa => 'Str', optional => 1 },
     )->with('Method');
     my ($self, $args) = $rule->validate(@_);
     
     my $sub = $self->compile(
-        plugin => $args->{plugin},
+        plugin => $args->{plugin}->plugin,
         type => $args->{type},
     );
 
     my $storage = Kurado::Storage->new( redis => $self->config->redis );
     my $meta = $storage->get_by_plugin(
         plugin => $args->{plugin},
-        address => $args->{address},
+        address => $args->{host}->address,
     );
 
     my @params;
-    push @params, '--address', $args->{address};
-    push @params, '--hostname', $args->{hostname};
-    push @params, '--comments', $args->{comments} if exists $args->{comments};
-    for my $p_a ( @{$args->{plugin_arguments}} ) {
+    push @params, '--address', $args->{host}->address;
+    push @params, '--hostname', $args->{host}->hostname;
+    push @params, '--comments', $args->{host}->comments if length $args->{host}->comments;
+    for my $p_a ( @{$args->{plugin}->arguments} ) {
         push @params, '--plugin-arguments', $p_a;
     }
     push @params, '--graph', $args->{graph} if exists $args->{graph};
 
     my ($stdout, $stderr, $exit) = Capture::Tiny::capture {
-        local $Kurado::Plugin::BRIDGE{'kurado.metrics_config'} = $args->{metrics_config};
-        local $Kurado::Plugin::BRIDGE{'kurado.metrics_meta'} = $meta;
+        local $Kurado::Plugin::BRIDGE{'kurado.metrics_config'} = jdclone($args->{metrics_config});
+        local $Kurado::Plugin::BRIDGE{'kurado.metrics_meta'} = jdclone($meta);
         #local $ENV{'kurado.metrics_config_json'} = $_JSON->encode($args->{metrics_config});
         #local $ENV{'kurado.metrics_meta_json'} = $_JSON->encode($meta);
         $sub->(@params);

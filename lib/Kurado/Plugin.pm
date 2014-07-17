@@ -5,9 +5,7 @@ use warnings;
 use 5.10.0;
 use Getopt::Long;
 use Pod::Usage;
-use JSON::XS;
 
-my $_JSON = JSON::XS->new->utf8;
 our %BRIDGE = ();
 
 sub new {
@@ -92,11 +90,6 @@ sub graph {
     $_[0]->{graph};
 }
 
-sub jdclone {
-    my $ref = shift;
-    $_JSON->decode($_JSON->encode($ref));
-}
-
 use Log::Minimal;
 
 sub meta_config {
@@ -118,7 +111,7 @@ sub meta_config {
         }
     }
     elsif ( $BRIDGE{"kurado.${key}"} && ref $BRIDGE{"kurado.${key}"}) {
-        $self->{$key} = jdclone($BRIDGE{"kurado.${key}"});
+        $self->{$key} = $BRIDGE{"kurado.${key}"};
     }
     elsif ( exists $ENV{"kurado.${key}_json"} ) {
         $self->{$key} = eval { $_JSON->decode($ENV{"kurado.${key}_json"}) };

@@ -50,6 +50,8 @@ if ( $dump_json ) {
 print $loader->statistics;
 print "OK. config loaded!\n\n";
 
+my $host = $loader->host_by_address('127.0.0.1');
+
 
 __END__
 

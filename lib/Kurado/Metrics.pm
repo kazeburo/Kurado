@@ -7,6 +7,7 @@ use Log::Minimal;
 
 use Kurado::RRD;
 use Kurado::Storage;
+use Kurado::Object::Msg;
 
 has 'config' => (
     is => 'ro',
@@ -29,41 +30,24 @@ sub process_message {
             warnf("'$line' has error '$@'. ignore it");
             next;
         }
-        if ( $msg->{type} eq 'metrics' ) {
+        if ( $msg->metrics_type eq 'metrics' ) {
             # rrd update
             #debugf("rrd update %s",$msg);
             eval {
-                $rrd->update(
-                    plugin => $msg->{plugin},
-                    address => $msg->{address},
-                    key => $msg->{key},
-                    timestamp => $msg->{timestamp},
-                    value => $msg->{value},
-                );
+                $rrd->update(msg=>$msg);
             };
             critf('failed update rrd %s : %s', $msg, $@) if $@;
         }
-        elsif ( $msg->{type} eq 'meta' ) {
+        elsif ( $msg->metrics_type eq 'meta' ) {
             # update storage
             $storage->set(
-                plugin => $msg->{plugin},
-                address => $msg->{address},
-                key => $msg->{key},
-                value => $msg->{value},
+                msg => $msg,
                 expires => 60*60
             );
         }
-        elsif ( $msg->{type} eq 'warn' ) {
+        elsif ( $msg->metrics_type eq 'warn' ) {
             # update storage
-            my @lt = localtime($msg->{timestamp});
-            my $timestr = sprintf '%04d-%02d-%02dT%02d:%02d:%02d', $lt[5]+1900, $lt[4]+1, @lt[3,2,1,0];
-            $storage->set(
-                plugin => "__warn__/".$msg->{plugin},
-                address => $msg->{address},
-                key => $msg->{key},
-                value => "[$timestr] $msg->{value}",
-                expires => 5*60
-            );
+            $storage->set_warn(msg => $msg);
         }
     }
     
@@ -94,15 +78,20 @@ sub parse_metrics_line {
         die "invalid rrd data type\n";
     }
     
-    return {
+    my $unescape = uri_unescape($plugin);
+    my ( $plugin_key, @arguments )  = split /:/, $line;
+    my $obj_plugin = Kurado::Object::Plugin->new(
+        plugin => $plugin_key,
+        arguments => \@arguments,
+    );
+    return Kurado::Object::Msg->new(
         address => $address,
-        plugin => $plugin,
-        type => $type,
+        plugin => $obj_plugin,
+        metrics_type => $type,
         key => $metrics_key,
-        joined_key => $key,
         value => $value,
         timestamp => $timestamp
-    };
+    );
 }
 
 1;

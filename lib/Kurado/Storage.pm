@@ -2,6 +2,7 @@ package Kurado::Storage;
 
 use strict;
 use warnings;
+use utf8;
 use 5.10.0;
 use Mouse;
 use Data::Validator;
@@ -30,24 +31,53 @@ sub connect {
 
 sub set {
     state $rule = Data::Validator->new(
-        plugin => 'Str',
-        address => 'Str',
-        key => 'Str',
-        value => 'Str',
+        msg => 'Kurado::Object::Msg',
         expires => 'Str',
     )->with('Method');
     my ($self, $args) = $rule->validate(@_);
+    $self->_set(
+        (map { ( $_ => $args->{$_} ) } qw/msg expires/),
+        type => 'storage',
+    );
+}
+
+sub set_warn {
+    state $rule = Data::Validator->new(
+        msg => 'Kurado::Object::Msg'
+    )->with('Method');
+    my ($self, $args) = $rule->validate(@_);
+
+    my @lt = localtime($args->{msg}->{timestamp});
+    my $timestr = sprintf '%04d-%02d-%02dT%02d:%02d:%02d', $lt[5]+1900, $lt[4]+1, @lt[3,2,1,0];
+    $self->_set(
+        msg  => $args->{msg},
+        type => '__warn__',
+        expires => 5*60,
+        value => "$timestr ".$args->{msg}->value
+    );
+}
+
+sub _set {
+    state $rule = Data::Validator->new(
+        msg => 'Kurado::Object::Msg',         
+        expires => 'Str',
+        type => 'Str',
+        value => { isa => 'Str', optional => 1},
+    )->with('Method');
+    my ($self, $args) = $rule->validate(@_);
  
-    my $set_key  = join "/", "storage", $args->{address}, $args->{plugin};
-    my $key = join "/", "storage", $args->{address}, $args->{plugin}, $args->{key};
+    my $set_key  = join "/", $args->{type},
+        $args->{msg}->address, $args->{msg}->plugin->plugin_identifier_escaped;
+    my $key = join "/", $args->{type}, 
+        $args->{msg}->address, $args->{msg}->plugin->plugin_identifier_escaped, $args->{msg}->key;
     my $connect = $self->connect;
 
     my $expire_at = time + $args->{expires};
-
+    my $value = (exists $args->{value}) ? $args->{value} : $args->{msg}->value;
     my @res;
     $connect->multi(sub {});
-    $connect->zadd($set_key, $expire_at, $args->{key}, sub {});
-    $connect->set($key, $args->{value}, sub {});
+    $connect->zadd($set_key, $expire_at, $args->{msg}->key, sub {});
+    $connect->set($key, $value, sub {});
     $connect->expireat($key, $expire_at, sub {});
     $connect->exec(sub { @res = @_ });
     $connect->wait_all_responses;
@@ -59,13 +89,16 @@ sub set {
 
 sub delete {
     state $rule = Data::Validator->new(
-        plugin => 'Str',
+        plugin => 'Kurado::Object::Plugin',
         address => 'Str',
-        key => 'Str',
+        key => 'Str'
     )->with('Method');
     my ($self, $args) = $rule->validate(@_);
-    my $set_key  = join "/", "storage", $args->{address}, $args->{plugin};
-    my $key = join "/", "storage", $args->{address}, $args->{plugin}, $args->{key};
+
+    my $set_key  = join "/", 'storage',
+        $args->{address}, $args->{plugin}->plugin_identifier_escaped;
+    my $key = join "/", 'storage', 
+        $args->{address}, $args->{plugin}->plugin_identifier_escaped, $args->{key};
 
     my $connect = $self->connect;
 
@@ -85,11 +118,13 @@ sub delete {
 
 sub get_by_plugin {
     state $rule = Data::Validator->new(
-        plugin => 'Str',
+        plugin => 'Kurado::Object::Plugin',
         address => 'Str',
     )->with('Method');
     my ($self, $args) = $rule->validate(@_);
-    my $set_key  = join "/", "storage", $args->{address}, $args->{plugin};
+
+    my $set_key  = join "/", 'storage',
+        $args->{address}, $args->{plugin}->plugin_identifier_escaped;
 
     my $connect = $self->connect;
     my $time = time;
@@ -100,6 +135,27 @@ sub get_by_plugin {
     my %ret = List::MoreUtils::pairwise { ($a, $b) } @keys, @values;
     return \%ret;
 }
+
+sub get_warn_by_plugin {
+    state $rule = Data::Validator->new(
+        plugin => 'Kurado::Object::Plugin',
+        address => 'Str',
+    )->with('Method');
+    my ($self, $args) = $rule->validate(@_);
+
+    my $set_key  = join "/", '__warn__',
+        $args->{address}, $args->{plugin}->plugin_identifier_escaped;
+
+    my $connect = $self->connect;
+    my $time = time;
+    $connect->zremrangebyscore($set_key, '-inf', '('.$time);
+    my @keys = $connect->zrangebyscore($set_key, $time, '+inf');
+    return {} unless @keys;
+    my @values = $connect->mget(map { $set_key.'/'.$_  } @keys);
+    my %ret = List::MoreUtils::pairwise { ($a, $b) } @keys, @values;
+    return \%ret;
+}
+
 
 1;
 
