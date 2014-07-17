@@ -8,10 +8,10 @@ use lib "$FindBin::Bin/../lib";
 use Getopt::Long;
 use Pod::Usage;
 use Log::Minimal;
+use JSON::XS;
 
 use Kurado;
 use Kurado::ConfigLoader;
-use Kurado::Worker;
 
 $Log::Minimal::AUTODUMP = 1;
 
@@ -22,6 +22,7 @@ GetOptions(
     "c|config=s"   => \my $path,
     "h|help"     => \my $help,
     "v|version"  => \my $version,
+    "dump-json"  => \my $dump_json,
 );
 
 if ( $version ) {
@@ -40,27 +41,31 @@ if ( !$path ) {
 
 infof("loading config..");
 my $loader = Kurado::ConfigLoader->new(path=>$path);
-infof($_) for grep { $_ } split /\n/, $loader->statistics;
 
-infof("run workers");
-my $worker = Kurado::Worker->new(config_loader=>$loader);
-$worker->run;
+if ( $dump_json ) {
+    print JSON::XS->new->convert_blessed->canonical->pretty->encode($loader->dump);
+    exit;
+}
+
+print $loader->statistics;
+print "OK. config loaded!\n\n";
+
 
 __END__
 
 =head1 NAME
 
-kurado_worker - Kurado worker
+kurado_config - Kurado config test
 
 =head1 SYNOPSIS
 
   
   # run 
-  % kurado_worker -c config.yml
+  % kurado_config -c config.yml
 
 =head1 DESCRIPTION
 
-Kurado worker
+test config
 
 =head1 OPTIONS
 
@@ -84,6 +89,7 @@ Masahiro Nagano <kazeburo {at} gmail.com>
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
+
 
 # Local Variables:
 # mode: cperl

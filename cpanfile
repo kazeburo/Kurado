@@ -21,6 +21,7 @@ requires 'Data::Validator';
 requires 'Redis::Fast';
 requires 'Parallel::Prefork';
 requires 'File::Zglob';
+requires 'Unicode::EastAsianWidth';
 
 on 'test' => sub {
     requires 'Test::More',     '0.96';

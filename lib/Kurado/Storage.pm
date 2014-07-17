@@ -9,8 +9,6 @@ use Redis::Fast;
 use List::MoreUtils;
 use Log::Minimal;
 
-
-
 has 'redis' => (
     is => 'ro',
     isa => 'Str',

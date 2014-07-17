@@ -82,7 +82,7 @@ sub update {
     eval {
         RRDs::update($path, @param);
         my $ERR=RRDs::error;
-        if ( $ERR =~ /illegal attempt to update using time.*when last update time is.*minimum one second step/ ) {
+        if ( $ERR && $ERR =~ /illegal attempt to update using time.*when last update time is.*minimum one second step/ ) {
             warnf('failed update rrd %s%s: %s',$path,\@param, $ERR);
         }
         else {

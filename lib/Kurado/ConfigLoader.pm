@@ -4,9 +4,16 @@ use strict;
 use warnings;
 use utf8;
 use YAML::XS qw//;
+use JSON::XS;
 use File::Spec;
-use Kurado::Config;
 use Mouse;
+use Unicode::EastAsianWidth;
+
+use Kurado::Config;
+use Kurado::Object::Host;
+use Kurado::Object::Roll;
+use Kurado::Object::Plugin;
+use Kurado::Plugin::Compile;
 
 has 'path' => (
     is => 'ro',
@@ -27,6 +34,9 @@ sub yaml_head {
 
 sub BUILD {
     my ($self) = @_;
+    $self->{_roll_cache} = {};
+    $self->{load_plugins} = {};
+    $self->{service_hosts} = {};
     $self->parse_file();
 }
 
@@ -93,7 +103,11 @@ sub parse_service_config {
 
         my @hosts;
         for my $host_line ( @$hosts ) {
-            my $host = $self->parse_host( $host_line, $roll );
+            my $host = eval {
+                $self->parse_host( $host_line, $roll );
+            };
+            die "$@".yaml_head($config) if $@;
+            $self->{service_hosts}{$service}++;
             push @hosts, $host;
         }
         
@@ -116,27 +130,27 @@ sub parse_host {
     my ($self, $line, $roll_name) = @_;
 
     my ( $address, $hostname, $comments )  = split /\s+/, $line, 3;
-    die "cannot find address in host '$line'\n" unless $address;
+    die "cannot find address in '$line'\n" unless $address;
     $hostname //= $address;
     $comments //= "";
+    die "duplicated host entry address $address in '$line'\n" if exists $self->{hosts}{$address};
 
     my $roll = $self->load_roll( $roll_name );
-
-    return {
+    $self->{hosts}{$address} =  Kurado::Object::Host->new(
         address => $address,
         hostname => $hostname,
         comments => $comments,
         roll => $roll_name,
-        metrics_config => $roll->{metrics_config},
-        plugins => $roll->{plugins},
-    };
+        metrics_config => $roll->metrics_config,
+        plugins => $roll->plugins,
+    );
+    $self->{hosts}{$address};
 }
 
-my %ROLL_CACHE;
 sub load_roll {
     my ($self, $roll_name) = @_;
     # cache
-    return $ROLL_CACHE{$roll_name} if $ROLL_CACHE{$roll_name};
+    return $self->{_roll_cache}{$roll_name} if $self->{_roll_cache}{$roll_name};
     my $path = File::Spec->catfile($self->config->rolls_dir, $roll_name);
     my ($roll_config) = eval {
         YAML::XS::LoadFile($path);
@@ -151,22 +165,37 @@ sub load_roll {
         push @plugins, $self->parse_plugin($_);
     }    
     
-    my $roll = {
+    $self->{_roll_cache}{$roll_name} = Kurado::Object::Roll->new(
         metrics_config => $metrics_config,
         plugins => \@plugins
-    };    
-    $ROLL_CACHE{$roll_name} = $roll;
-    return $roll;
+    );    
+    $self->{_roll_cache}{$roll_name};
 }
 
 sub parse_plugin {
     my ($self, $line) = @_;
     my ( $plugin, @arguments )  = split /:/, $line;
     die "cannot find plugin name: in '$line'\n" unless $plugin;
-    return {
+
+    # compile plugin
+    my $pc = Kurado::Plugin::Compile->new(config=>$self->config);
+    my @loaded_plugins;
+    for my $type (qw/view fetch/) {
+        my $compiled = eval {
+            $pc->compile(
+                plugin => $plugin,
+                type => $type,
+            );
+        };
+        die "failed load plugin plugin:$plugin,type:$type\n" if $@;
+        push @loaded_plugins, $type if $compiled;
+    }
+    die "Could not find plugin '$plugin'\n" if @loaded_plugins == 0;
+    $self->{load_plugins}{$plugin} = \@loaded_plugins;
+    return Kurado::Object::Plugin->new(
         plugin => $plugin,
         arguments => \@arguments,
-    };
+    );
 }
 
 sub config {
@@ -177,12 +206,13 @@ sub metrics_config {
     $_[0]->{metrics_config};
 }
 
+my $_JSON = JSON::XS->new->utf8;
 sub merge_metrics_config {
     my ($self,$ref) = @_;
-    +{
+    $_JSON->decode($_JSON->encode({
         %{$self->{metrics_config}},
         %$ref
-    };
+    }));
 }
 
 sub services {
@@ -191,7 +221,23 @@ sub services {
 
 sub sorted_services {
     my $self = shift;
-    [ map { { service => $_, sections => $self->services->{$_} } } sort { lc($a) cmp lc($b) } keys %{$self->services}]
+    [
+        map {{
+            service => $_,
+            sections => $self->services->{$_},
+            host_num => $self->{service_hosts}{$_},
+        }} sort { lc($a) cmp lc($b) } keys %{$self->services}
+    ];
+}
+
+sub host_by_address {
+    my ($self,$address) = @_;
+    $self->{hosts}{$address};
+}
+
+sub plugins {
+    my $self = shift;
+    [ keys %{$self->{load_plugins}} ];
 }
 
 sub dump {
@@ -201,6 +247,49 @@ sub dump {
         metrics_config => $self->metrics_config,
         services => $self->sorted_services,
     }
+}
+
+sub zlength {
+    my $str = shift;
+    my $width = 0;
+    while ($str =~ m/(?:(\p{InFullwidth}+)|(\p{InHalfwidth}+))/go) {
+        $width += ($1 ? length($1) * 2 : length($2));
+    }
+    $width;
+}
+
+sub statistics {
+    my $self = shift;
+    $self->sorted_services;
+    my ($maxlen) = sort { $b <=> $a } map { zlength($_) } keys %{$self->services};
+
+    $maxlen += 2;
+    $maxlen = 50 if $maxlen < 50;
+    my $body = "# REGISTERED HOSTS\n";
+    $body .= "-". "-"x$maxlen . "+" ."-------\n";
+    $body .= " SERVICE" . (" "x($maxlen-7)) . "| HOSTS \n";
+    $body .= "-". "-"x$maxlen . "+" ."-------\n";
+    for my $service (@{$self->sorted_services}) {
+        $body .= " " . $service->{service} . (" "x($maxlen - zlength($service->{service}))) . '| ' . sprintf('% 5d',$service->{host_num}) . " \n"
+    }
+    $body .= "-"."-"x$maxlen . "+" ."-------\n";
+
+    $body .= "\n# LOADED PLUGINS\n";
+
+    $body .= " PLUGIN" . (" "x($maxlen-6)) . "|  TYPE \n";
+    $body .= "-". "-"x$maxlen . "+" ."-------\n";
+    for my $load_plugin (keys %{$self->{load_plugins}}) {
+        for my $type ( @{$self->{load_plugins}{$load_plugin}} ) {
+        $body .= " "
+            . $load_plugin
+            . (" "x($maxlen - zlength($load_plugin)))
+            . '| '
+            . sprintf('% 5s',$type) . " \n"
+        }
+    }
+    $body .= "-"."-"x$maxlen . "+" ."-------\n";
+
+    return "$body\n";
 }
 
 1;
