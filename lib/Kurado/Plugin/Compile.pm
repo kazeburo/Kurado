@@ -2,6 +2,7 @@ package Kurado::Plugin::Compile;
 
 use strict;
 use warnings;
+use utf8;
 use 5.10.0;
 use Mouse;
 use Log::Minimal;
@@ -13,6 +14,8 @@ use POSIX 'SEEK_SET';
 use SelectSaver;
 use JSON::XS;
 use Capture::Tiny;
+
+use Kurado::Storage;
 
 my $_JSON = JSON::XS->new->utf8;
 
@@ -93,7 +96,7 @@ sub compile {
         '  local $Kurado::Plugin::Compile::USE_REAL_EXIT = 0;',
         '  local ($0, $Kurado::Plugin::Compile::_dir, *DATA);',
         '  {',
-        '    my ($data, $path, $dir) = @_[1..3];',
+        '    my ($data, $path, $dir) = @_[0..2];',
         '    $0 = $path;',
         '    $Kurado::Plugin::Compile::_dir = Cwd::Guard::cwd_guard $dir;',
        q!    open DATA, '<', \$data;!,   
@@ -102,22 +105,18 @@ sub compile {
        q!  local @SIG{keys %SIG} = do { no warnings 'uninitialized'; @{[]} = values %SIG };!,
         '  local $^W = $warnings;',
         '  my $rv = eval {',
-        '    local @ARGV = @{ $_[4] };', # args to @ARGV
-        '    local @_    = @{ $_[4] };', # args to @_ as well
+        '    local @ARGV = @{ $_[3] };', # args to @ARGV
+        '    local @_    = @{ $_[3] };', # args to @_ as well
         "    #line 1 $path",
         "    $code",
         '  };',
-       q{  my $self     = shift;
-  my $exit_val = unpack('C', pack('C', sprintf('%.0f', $rv)));
-  if ($@) {
-    die $@ unless (ref($@) eq 'ARRAY' and $@->[0] eq "EXIT\n");
-    my $exit_param = unpack('C', pack('C', sprintf('%.0f', $@->[1])));
-    if ($exit_param != 0 && !$Kurado::Plugin::Compile::RETURN_EXIT_VAL && !$self->{return_exit_val}) {
-      die "exited nonzero: $exit_param";
-    }
-    $exit_val = $exit_param;
-  }
-  return $exit_val;},
+        '  my $exit_code = 0;',
+        '  if ($@) {',
+        '    die "$@\n" unless (ref($@) eq "ARRAY" and $@->[0] eq "EXIT\n");', #no exit
+       q!    $exit_code = unpack('C', pack('C', sprintf('%.0f', $@->[1])));!, # ~128
+        '    die "exited nonzero: $exit_code" if $exit_code != 0;',
+        '  }',
+        '  return $exit_code;',
         '};',"\n";
 
     my $sub = do {
@@ -129,11 +128,11 @@ sub compile {
         my $code = _eval $eval;
         my $exception = $@;
 
-        die "Could not compile $path: $exception" if $exception;
+        die "Could not compile $path: $exception\n" if $exception;
 
         sub {
             my @args = @_;
-            $code->($self, $data, $path, $dir, \@args)
+            $code->($data, $path, $dir, \@args)
         };
     };
     infof "succeeded compiling plugin %s/%s", $args->{type}, $args->{plugin}, $path;
@@ -166,7 +165,7 @@ sub run {
         address => $args->{host}->address,
     );
 
-    my @params;
+    my @params = ();
     push @params, '--address', $args->{host}->address;
     push @params, '--hostname', $args->{host}->hostname;
     push @params, '--comments', $args->{host}->comments if length $args->{host}->comments;
@@ -175,14 +174,21 @@ sub run {
     }
     push @params, '--graph', $args->{graph} if exists $args->{graph};
 
-    my ($stdout, $stderr, $exit) = Capture::Tiny::capture {
-        local $Kurado::Plugin::BRIDGE{'kurado.metrics_config'} = jdclone($args->{metrics_config});
+    my ($stdout, $stderr, $success) = Capture::Tiny::capture {
+        local $Kurado::Plugin::BRIDGE{'kurado.metrics_config'} = jdclone($args->{host}->metrics_config);
         local $Kurado::Plugin::BRIDGE{'kurado.metrics_meta'} = jdclone($meta);
         #local $ENV{'kurado.metrics_config_json'} = $_JSON->encode($args->{metrics_config});
         #local $ENV{'kurado.metrics_meta_json'} = $_JSON->encode($meta);
-        $sub->(@params);
+        eval {
+            $sub->(@params);
+        };
+        if ( $@ ) {
+            warn "$@\n";
+            return 0;
+        }
+        return 1;
     };
-    [$stdout, $stderr, $exit];
+    return ($stdout, $stderr, $success);
 }
 
 sub find_plugin {

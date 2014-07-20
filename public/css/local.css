@@ -1,0 +1,176 @@
+body {
+  min-width: 1000px;
+}
+
+.navbar-nav > li > a {
+  padding-top: 5px !important;
+  padding-bottom:10px !important;
+}
+
+.navbar {
+  border-radius: 0;
+  min-height: 20px !important;
+}
+
+.navbar .container-fluid .navbar-header .navbar-brand {
+  height: 20px !important;
+  padding-top: 6px !important;
+}
+
+.navbar {
+  border-bottom: 1px solid #222;
+  margin-bottom: 0px;
+}
+
+
+/* Sidebar navigation */
+.nav-sidebar {
+  margin-left: -15px;
+  margin-right: -15px;
+}
+
+.nav-sidebar .list-group {
+  margin-bottom: 5px;
+  padding-bottom: 3px;
+}
+
+.nav-sidebar .list-group .list-group-item {
+  border-radius: 0px;
+  border-right: 1px solid #222;
+  border-left: none;
+  border-top: none;
+  border-bottom: none;
+  /* border: 1px solid transparent; */
+  padding: 4px 8px 3px 15px;
+  margin: 1px 5px 1px 0px;
+}
+
+.nav-sidebar .list-group .list-group-item.active {
+  background-color: #272b30;
+  border-right: 6px solid #272b30;
+/*
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+*/
+  margin: 1px 0px 1px 0px;
+}
+
+.nav-sidebar .list-group a.list-group-item:hover {
+ /* background-color: #272b30; */
+}
+
+.nav-sidebar .list-group .list-group-item.active:hover {
+  background-color: #272b3;
+}
+
+
+.list-group-item>.badge {
+  font-size: 11px;
+}
+
+
+
+/* subnav */
+
+#subnav.affix {
+  position: fixed;
+  top: 0;
+  z-index:10;
+}
+
+#subnav {
+  border-bottom: 1px solid #111;
+  padding: 5px;
+}
+
+#subnav .subnav-brand,
+#subnav .subnav-brand:hover {
+  text-decoration: none;
+  color: #eee;
+}
+
+#subnav .subnav-title {
+  color: #eee;
+  margin: 3px;
+  font-size: 19px;
+}
+
+#subnav .subnav-title a,
+#subnav .subnav-title a:hover {
+  text-decoration: none;
+  color: #eee;
+}
+
+
+/* table */
+h3.service {
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+.servers {
+}
+.servers .table td {
+  padding: 3px;
+}
+
+.servers .table th {
+  padding: 1px;
+  padding-left: 22px;
+  color: #111;
+  background-color: #bbb;
+  font-size: 17px;
+}
+
+.icon-ok {
+  color: #888;
+}
+
+.host-checkbox {
+  position: relative;
+  display: inline-block;
+  top: -1px;
+}
+
+.host-address, .host-address:hover {
+  text-decoration: none !important;
+  color: #4ef;
+  padding-right: 2px;
+}
+
+.host-hostname {
+  font-weight: bold;
+  padding-right: 2px;
+}
+
+.host-comments {
+  color: #888;
+}
+
+/* graphs */
+
+h3.plugin-name {
+  font-size: 15px;
+  text-transform:uppercase;
+}
+
+h4.metrics-label {
+  font-size: 19px;
+  color: #222;
+  border-top: 1px solid #222;
+  background-color: #bbb;
+  padding: 2px;
+  margin-bottom: 3px;
+}
+
+.metrics-meta {
+  color: #ccc;
+  font-size: 15px;
+}
+
+.metrics-meta span {
+  white-space: nowrap;
+}
+
+.graph-nav {
+  margin-top: 10px;
+}

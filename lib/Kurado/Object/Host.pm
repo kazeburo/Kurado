@@ -42,6 +42,12 @@ has 'plugins' => (
     required => 1
 );
 
+has 'service' => (
+    is => 'ro',
+    isa => 'Str',
+    required => 1
+);
+
 __PACKAGE__->meta->make_immutable();
 
 sub TO_JSON {

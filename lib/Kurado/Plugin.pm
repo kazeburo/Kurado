@@ -2,9 +2,13 @@ package Kurado::Plugin;
 
 use strict;
 use warnings;
+use utf8;
 use 5.10.0;
 use Getopt::Long;
 use Pod::Usage;
+use JSON::XS;
+
+my $_JSON = JSON::XS->new->utf8;
 
 our %BRIDGE = ();
 
@@ -51,19 +55,21 @@ sub parse_options {
     }
 
     if ( $help ) {
-        pod2usage(
-            -verbose => 2,
-            -exitval => 0,
-            -input => $self->{caller}->[1],
-        );
+        pod2usage({
+            -verbose => 99,
+            -exitval => 'noexit',
+            -output => *STDOUT,
+        });
+        exit(0);
     }
-
     if ( !$self->{address} || !$self->{hostname} ) {
-        pod2usage(
+        pod2usage({
+            -msg => 'ERR: address and hostname are required',
             -verbose => 1,
-            -exitval => 1,
-            -input => $self->{caller}->[1],
-        );        
+            -exitval => 'noexit',
+            -output => *STDERR,
+        });
+        exit(2);
     }
 
     $self->{comments} = \@comments;

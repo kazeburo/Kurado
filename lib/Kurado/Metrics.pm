@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Mouse;
 use Log::Minimal;
+use URI::Escape;
 
 use Kurado::RRD;
 use Kurado::Storage;

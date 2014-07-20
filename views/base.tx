@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html" charset="utf-8">
+<title>Kurado - Server Performance Metrics</title>
+<link rel="shortcut icon" href="<: $c.req.uri_for('/favicon.ico') :>" type="image/vnd.microsoft.icon" />
+<link rel="stylesheet" href="<: $c.req.uri_for('/css/bootstrap.min.css') :>">
+<link rel="stylesheet" href="<: $c.req.uri_for('/css/local.css') :>">
+</head>
+<body>
+
+<div class="navbar navbar-default">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <a href="/" class="navbar-brand">Kurado - Server Performance Metrics</a>
+      <button class="navbar-toggle" type="button" data-toggle="collapse" data-target="#navbar-main">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <div class="navbar-collapse collapse" id="navbar-main">
+      <ul class="nav navbar-nav navbar-right">
+        <li><a href="/">-</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+: block content -> { }
+
+<script type="text/javascript" src="<: $c.req.uri_for('/js/jquery.min.js') :>"></script>
+<script type="text/javascript" src="<: $c.req.uri_for('/js/jquery.color-2.1.2.min.js') :>"></script>
+<script type="text/javascript" src="<: $c.req.uri_for('/js/bootstrap.min.js') :>"></script>
+<script>
+$(function(){
+  $('#subnav').map(function(){
+    var subnav = $(this);
+    var bgclr = subnav.css('background-color');
+    var owidth = subnav.innerWidth();
+    subnav.find('.subnav-brand').hide();
+    var spacer = $('<div></div>');
+    spacer.css('height',subnav.innerHeight());
+    spacer.hide();
+    subnav.after(spacer);
+    subnav.affix({
+      offset: {
+        top: subnav.parent().position().top - 1
+      }
+    });
+    subnav.on('affixed.bs.affix',function() {
+      $('#'+subnav.attr('id')+'.affix').css('width',subnav.parents('.subnav-wrapper').outerWidth());
+      subnav.css({'background-image':$('.navbar').css('background-image')});
+      spacer.show();
+      subnav.find('.subnav-brand').show();
+    });
+    subnav.on('affixed-top.bs.affix',function() {
+      $('#'+subnav.attr('id')+'.affix').css('width',subnav.parents('.subnav-wrapper').outerWidth());
+      subnav.css({'background-image':'none'});
+      subnav.css({'background-color':bgclr});
+      spacer.hide();
+      subnav.find('.subnav-brand').hide();
+    });
+    $(window).resize(function(){
+      subnav.css('width',subnav.parents('.subnav-wrapper').outerWidth());
+      $('#'+subnav.attr('id')+'.affix').css('width',subnav.parents('.subnav-wrapper').outerWidth());
+    });
+  });
+});
+</script>
+</body>
+</html>
+
+

@@ -104,7 +104,7 @@ sub parse_service_config {
         my @hosts;
         for my $host_line ( @$hosts ) {
             my $host = eval {
-                $self->parse_host( $host_line, $roll );
+                $self->parse_host( $host_line, $roll, $service );
             };
             die "$@".yaml_head($config) if $@;
             $self->{service_hosts}{$service}++;
@@ -127,7 +127,7 @@ sub parse_service_config {
 }
 
 sub parse_host {
-    my ($self, $line, $roll_name) = @_;
+    my ($self, $line, $roll_name, $service) = @_;
 
     my ( $address, $hostname, $comments )  = split /\s+/, $line, 3;
     die "cannot find address in '$line'\n" unless $address;
@@ -143,6 +143,7 @@ sub parse_host {
         roll => $roll_name,
         metrics_config => $roll->metrics_config,
         plugins => $roll->plugins,
+        service => $service
     );
     $self->{hosts}{$address};
 }
@@ -187,7 +188,7 @@ sub parse_plugin {
                 type => $type,
             );
         };
-        die "failed load plugin plugin:$plugin,type:$type\n" if $@;
+        die "failed load plugin plugin:$plugin,type:$type $@\n" if $@;
         push @loaded_plugins, $type if $compiled;
     }
     die "Could not find plugin '$plugin'\n" if @loaded_plugins == 0;
@@ -232,6 +233,7 @@ sub sorted_services {
 
 sub host_by_address {
     my ($self,$address) = @_;
+    return unless exists $self->{hosts}{$address};
     $self->{hosts}{$address};
 }
 

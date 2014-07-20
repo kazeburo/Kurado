@@ -38,12 +38,17 @@ if ( !$path ) {
     pod2usage(-verbose=>0,-exitval=>1);
 }
 
+my $root_dir = "$FindBin::Bin/..";
+
 infof("loading config..");
 my $loader = Kurado::ConfigLoader->new(path=>$path);
 infof($_) for grep { $_ } split /\n/, $loader->statistics;
 
 infof("run workers");
-my $worker = Kurado::Worker->new(config_loader=>$loader);
+my $worker = Kurado::Worker->new(
+    config_loader => $loader,
+    root_dir => $root_dir,
+);
 $worker->run;
 
 __END__

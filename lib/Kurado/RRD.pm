@@ -59,26 +59,22 @@ sub _create {
 
 sub update {
     state $rule = Data::Validator->new(
-        plugin => 'Kurado::Object::Plugin',
-        address => 'Str',
-        key => 'Str',
-        timestamp => 'Str',
-        value => 'Str',
+        msg => 'Kurado::Object::Msg'
     )->with('Method');
     my ($self, $args) = $rule->validate(@_);
 
     my $path = File::Spec->catfile(
         $self->data_dir,
-        $args->{address},
-        $args->{plugin}->plugin_identifier_escaped,
-        uri_escape($args->{key}) . '.rrd'
+        $args->{msg}->address,
+        $args->{msg}->plugin->plugin_identifier_escaped,
+        uri_escape($args->{msg}->key) . '.rrd'
     );
 
     $self->_create($path);
 
     my @param = (
         '-t', 'n',
-        '--', join(':', $args->{timestamp}, $args->{value})
+        '--', join(':', $args->{msg}->timestamp, $args->{msg}->value)
     );
     eval {
         RRDs::update($path, @param);

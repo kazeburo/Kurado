@@ -1,0 +1,89 @@
+: cascade base
+: around content -> {
+
+
+<div class="subnav-wrapper">
+<div id="subnav">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-8">
+        <h2 class="subnav-title">
+          <span class="glyphicon glyphicon-th-large"></span>
+          <a href="<: $c.req.uri_for('/',[service=>$c.stash.host.service]) :>"><: $c.stash.host.service :></a>
+          /
+          <a href="<: $c.req.uri_for('/',[service=>$c.stash.host.service]) :>"><: $c.stash.host.address :></a>
+          <: $c.stash.host.hostname :>
+          <span class="host-comments"><: $c.stash.host.comments :></span>
+        </h2>
+      </div>
+      <div class="col-sm-4" style="text-align: right;">
+        <a href="/" class="subnav-brand">Kurado - Server Performance Metrics</a>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<div class="container-fluid graph-nav">
+  <div class="row">
+    <div class="col-sm-6">
+    <div class="btn-toolbar" role="toolbar">
+      <div class="btn-group btn-group-sm">
+        <a href="#" class="btn btn-default active">24時間/1週間</a>
+        <a href="#" class="btn btn-default">月間/年間</a>
+      </div>
+      <div class="btn-group btn-group-sm">
+        <a href="#" class="btn btn-default">1時間</a>
+        <a href="#" class="btn btn-default">4時間</a>
+        <a href="#" class="btn btn-default">8時間</a>
+        <a href="#" class="btn btn-default">3日間</a>
+      </div>
+    </div> <!-- toolbar -->
+    </div> <!-- col -->
+    <div class="col-sm-6" style="border-bottom: 1px solid #999">
+      <div>
+        日付指定form
+      </div>
+    </div> <!-- col -->
+  </div> <!-- row -->
+</div> <!-- container -->
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-sm-12">
+
+: for $c.stash.host.metrics_list -> $plugin {
+  <h3 class="plugin-name"><span class="glyphicon glyphicon-tasks"></span> <: $plugin.plugin.plugin :></h3>
+
+  : for $plugin.warn.keys() -> $warn_key {
+    <div class="alert alert-danger" role="alert"><: $plugin.warn[$warn_key] :></div>
+  : }
+
+  : for $plugin.metrics -> $metrics {
+    : if $metrics.label {
+      <h4 class="metrics-label"><span class="glyphicon glyphicon-stats"></span> <: $metrics.label :></h4>
+    : }
+    <div class="metrics-meta">
+    : for $metrics.meta.keys() -> $meta_key {
+      <span class="label label-info"><: $meta_key :></span>
+      <span><: $metrics.meta[$meta_key] :></span>
+    : }
+    </div>
+    : for $metrics.graphs -> $graph {
+      <div class="graphs">
+      <: $graph :>
+      </div>
+    : }
+
+  : }
+: }
+
+<br />
+<br />
+<br />
+
+    </div> <!-- col -->
+  </div> <!-- row -->
+</div> <!-- container -->
+: }
