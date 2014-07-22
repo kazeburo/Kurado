@@ -123,7 +123,7 @@ AREA:in#00C000:Inbound
 GPRINT:in:LAST:Cur\:%6.2lf%sbps
 GPRINT:in:AVERAGE:Ave\:%6.2lf%sbps
 GPRINT:in:MAX:Max\:%6.2lf%sbps\l
-LINE1:out#0000FF:Outbound 
+LINE2:out#0000FF:Outbound 
 GPRINT:out:LAST:Cur\:%6.2lf%sbps
 GPRINT:out:AVERAGE:Ave\:%6.2lf%sbps
 GPRINT:out:MAX:Max\:%6.2lf%sbps\l
@@ -151,7 +151,7 @@ CDEF:my8r=my8,total,/,100,*,0,100,LIMIT
 CDEF:my9r=my9,total,/,100,*,0,100,LIMIT
 CDEF:my10r=my10,total,/,100,*,0,100,LIMIT
 CDEF:my11r=my11,total,/,100,*,0,100,LIMIT
-AREA:my1r#c0c0c0:User   
+AREA:my1r#a9a9a9:User   
 GPRINT:my1r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my1r:AVERAGE:Ave\:%5.1lf[%%]
 GPRINT:my1r:MAX:Max\:%5.1lf[%%]
@@ -205,11 +205,14 @@ GPRINT:my11r:MIN:Min\:%5.1lf[%%]\l
 @@ loadavg-1
 Load Average
 DEF:my1=<%RRD_FOR loadavg-1.gauge %>:n:AVERAGE
+DEF:my2=<%RRD_FOR processors.gauge %>:n:AVERAGE
 AREA:my1#00C000:Load Average
 GPRINT:my1:LAST:Cur\:%6.2lf
 GPRINT:my1:AVERAGE:Ave\:%6.2lf
 GPRINT:my1:MAX:Max\:%6.2lf
 GPRINT:my1:MIN:Min\:%6.2lf\l
+LINE1:my2#ff3e00:CPU Core    :dashes=3,6
+GPRINT:my2:LAST:Cur\:%6.0lf\l
 
 @@ memory-usage
 Memory Usage
@@ -247,21 +250,21 @@ STACK:free#80e080:avail real
 GPRINT:free:LAST:Cur\:%6.2lf%sByte
 GPRINT:free:AVERAGE:Ave\:%6.2lf%sByte
 GPRINT:free:MAX:Max\:%6.2lf%sByte\l
-# total real
-LINE2:total#000080:total real
-GPRINT:total:LAST:Cur\:%6.2lf%sByte
-GPRINT:total:AVERAGE:Ave\:%6.2lf%sByte
-GPRINT:total:MAX:Max\:%6.2lf%sByte\l
 # used swap
-LINE2:swap-used#ff6060:used  swap
+LINE2:swap-used#a51800:used  swap
 GPRINT:swap-used:LAST:Cur\:%6.2lf%sByte
 GPRINT:swap-used:AVERAGE:Ave\:%6.2lf%sByte
 GPRINT:swap-used:MAX:Max\:%6.2lf%sByte\l
 # total swap
-LINE1:swap-total#F8E0E6:total swap
+LINE2:swap-total#d77c79:total swap
 GPRINT:swap-total:LAST:Cur\:%6.2lf%sByte
 GPRINT:swap-total:AVERAGE:Ave\:%6.2lf%sByte
 GPRINT:swap-total:MAX:Max\:%6.2lf%sByte\l
+# total real
+LINE2:total#005493:total real
+GPRINT:total:LAST:Cur\:%6.2lf%sByte
+GPRINT:total:AVERAGE:Ave\:%6.2lf%sByte
+GPRINT:total:MAX:Max\:%6.2lf%sByte\l
 
 @@ tcp-established
 TCP Established
@@ -323,4 +326,4 @@ AREA:my1b#ff99ff:Total
 GPRINT:my1b:LAST:Cur\:%4.2lf%sB
 AREA:my2b#cc00ff:Used 
 GPRINT:my2b:LAST:Cur\:%4.2lf%sB\l
-LINE1:lsl2#00A000:Prediction:dashes=2,8
+LINE1:lsl2#00A000:Prediction:dashes=3,6

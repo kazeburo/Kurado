@@ -27,32 +27,33 @@
     <div class="col-sm-6">
     <div class="btn-toolbar" role="toolbar">
       <div class="btn-group btn-group-sm">
-        <a href="#" class="btn btn-default active">24時間/1週間</a>
-        <a href="#" class="btn btn-default">月間/年間</a>
+        <a href="<: $c.req.uri_for('/server',[address=>$c.stash.host.address]):>" class="btn btn-default <: $term == "day" ? "active" : "" :>">24時間/1週間</a>
+        <a href="<: $c.req.uri_for('/server',[address=>$c.stash.host.address,term=>"month"]):>" class="btn btn-default <: $term == "month" ? "active" : "" :>">月間/年間</a>
       </div>
       <div class="btn-group btn-group-sm">
-        <a href="#" class="btn btn-default">1時間</a>
-        <a href="#" class="btn btn-default">4時間</a>
-        <a href="#" class="btn btn-default">8時間</a>
-        <a href="#" class="btn btn-default">3日間</a>
+        <a href="<: $c.req.uri_for('/server',[address=>$c.stash.host.address,term=>"1hour"]):>" class="btn btn-default <: $term == "1hour" ? "active" : "" :>">1時間</a>
+        <a href="<: $c.req.uri_for('/server',[address=>$c.stash.host.address,term=>"4hours"]):>" class="btn btn-default <: $term == "4hours" ? "active" : "" :>">4時間</a>
+        <a href="<: $c.req.uri_for('/server',[address=>$c.stash.host.address,term=>"8hours"]):>" class="btn btn-default <: $term == "8hours" ? "active" : "" :>">8時間</a>
+        <a href="<: $c.req.uri_for('/server',[address=>$c.stash.host.address,term=>"3days"]):>" class="btn btn-default <: $term == "3days" ? "active" : "" :>">3日間</a>
       </div>
     </div> <!-- toolbar -->
     </div> <!-- col -->
     <div class="col-sm-6">
-      <form class="form form-inline pull-right" role="form">
-
+      <form class="form form-inline pull-right" role="form" method="get" action="<: $c.req.uri_for('/server') :>">
+      <input type="hidden" name="address" value="<: $c.stash.host.address :>">
+      <input type="hidden" name="term" value="custom">
       <span class="glyphicon glyphicon-calendar"></span>
 
       <div class="form-group">
         <div class="input-group input-group-sm">
           <span class="input-group-addon">from</span>
-          <input type="text" value="" readonly class="form-control form-datetime">
+          <input type="text" name="from" value="<: $result.valid('from') :>" readonly class="form-control form-datetime">
         </div>
       </div>
       <div class="form-group">
         <div class="input-group input-group-sm">
           <span class="input-group-addon">to</span>
-          <input type="text" value="" readonly class="form-control form-datetime">
+          <input type="text" name="to" value="<: $result.valid('to') :>" readonly class="form-control form-datetime">
         </div>
       </div>
 
@@ -72,10 +73,12 @@
 </div> <!-- subnav-wrapper -->
 
 
-
 <div class="container-fluid">
   <div class="row">
     <div class="col-sm-12">
+
+<table class="table metrics">
+<tr><td>
 
 : for $c.stash.host.metrics_list -> $plugin {
   <h3 class="plugin-name"><span class="glyphicon glyphicon-tasks"></span> <: $plugin.plugin.plugin :></h3>
@@ -89,26 +92,34 @@
       <h4 class="metrics-label"><span class="glyphicon glyphicon-stats"></span> <: $metrics.label :></h4>
     : }
     <div class="metrics-meta">
-    : for $metrics.meta.keys() -> $meta_key {
+    : for $metrics.meta.keys().sort() -> $meta_key {
+      <span>
       <span class="label label-info"><: $meta_key :></span>
-      <span><: $metrics.meta[$meta_key] :></span>
+      <: $metrics.meta[$meta_key] :>
+      </span>
     : }
     </div>
     : for $metrics.graphs -> $graph {
       <div class="graphs">
-<img src="<: $c.req.uri_for('/graph',[address=>$c.stash.host.address,plugin_identifier=>$plugin.plugin.plugin_identifier,graph=>$graph,term=>"day"]) :>" />
-<img src="<: $c.req.uri_for('/graph',[address=>$c.stash.host.address,plugin_identifier=>$plugin.plugin.plugin_identifier,graph=>$graph,term=>"week"]) :>" />
+      : for $terms -> $display_term {
+        : if $term == "custom" {
+          <img src="<: $c.req.uri_for('/graph',[address=>$c.stash.host.address,plugin_identifier=>$plugin.plugin.plugin_identifier,graph=>$graph,term=>$display_term.term,width=>$display_term.width,from=>$result.valid('from'),to=>$result.valid('to')]) :>" />
+        : } else {
+          <img src="<: $c.req.uri_for('/graph',[address=>$c.stash.host.address,plugin_identifier=>$plugin.plugin.plugin_identifier,graph=>$graph,term=>$display_term.term,width=>$display_term.width]) :>" />
+        : }
+      : }
       </div>
     : }
 
   : }
 : }
 
-<br />
-<br />
-<br />
+</td></tr>
+</table>
 
     </div> <!-- col -->
   </div> <!-- row -->
 </div> <!-- container -->
+
+
 : }

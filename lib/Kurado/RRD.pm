@@ -170,6 +170,11 @@ sub graph {
         $period = -1 * 8 * 60 * 60;
         $xgrid = 'MINUTE:30:HOUR:1:HOUR:1:0:%H:%M';
     }
+    elsif ( $args->{term} eq '4hours' ) {
+        $period_title = '4 Hours';
+        $period = -1 * 4 * 60 * 60;
+        $xgrid = 'MINUTE:30:HOUR:1:HOUR:1:0:%H:%M';
+    }
     else {
         $period_title = 'Hour';
         $period = -1 * 60 * 60 * 2;
@@ -181,6 +186,7 @@ sub graph {
     my @opt = (
         $tmpfile,
         '-w', $args->{width},
+        '-h', 120,
         '-l', 0, #minimum
         '-u', 2, #maximum
         '-x', $xgrid,
@@ -189,13 +195,15 @@ sub graph {
         '-v', $title,
         '--slope-mode',
         '--disable-rrdtool-tag',
-        '--color', 'BACK#'.uc('272b30'),
-        '--color', 'CANVAS#'.uc('373b40'),
+        '--color', 'BACK#'.uc('313131'),
+        '--color', 'CANVAS#'.uc('313131'),
+        '--color', 'GRID#'.uc('686868'),
+        '--color', 'MGRID#'.uc('686868'),
         '--color', 'FONT#'.uc('c8c8c8'),
-        '--color', 'FRAME#'.uc('666666'),
-        '--color', 'AXIS#'.uc('aaaaaa'),
-        '--color', 'SHADEA#'.uc('222222'),
-        '--color', 'SHADEB#'.uc('222222'),
+        '--color', 'FRAME#'.uc('686868'),
+        '--color', 'AXIS#'.uc('686868'),
+        '--color', 'SHADEA#'.uc('313131'),
+        '--color', 'SHADEB#'.uc('313131'),
         '--border', 1,
         '-t', $period_title,
         '--font', "AXIS:8:",

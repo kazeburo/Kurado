@@ -71,9 +71,49 @@ get '/' => [qw/fill_config/] => sub {
     });
 };
 
+
 get '/server' => [qw/fill_config get_server/] => sub {
     my ($self, $c)  = @_;
-    $c->render('server.tx', {});
+    my $time = time;
+    $time = $time - ($time%(60*15));
+    my $result = $c->req->validator([
+        'term' => {
+            default => 'day',
+            rule => [
+                [['CHOICE',qw/month day 3days 8hours 4hours 1hour custom/],'invalid drawing term'],
+            ],
+        },
+        'from' => {
+            default => timestr($time-3600*32),
+            rule => [
+                [sub{ HTTP::Date::str2time($_[1]) }, 'invalid From datetime'],
+            ],
+        },
+        'to' => {
+            default => timestr($time),
+            rule => [
+                [sub{ HTTP::Date::str2time($_[1]) }, 'invalid To datetime'],
+            ],
+        },
+    ]);
+    if ( $result->has_error ) {
+        $c->halt(400,join("\n",@{$result->messages}));
+    }
+
+    my $m_width=500; 
+    my $l_width=1100;
+    my %terms = (
+        day => [{term=>"day",width=>$m_width},{term=>"week",width=>$m_width}],
+        month => [{term=>"day",width=>400},{term=>"week",width=>400},{term=>"month",width=>400},{term=>"year",width=>400}],
+        "3days" => [{term=>"3days",width=>$l_width}],
+        "8hours" => [{term=>"8hours",width=>$l_width}],
+        "4hours" => [{term=>"4hours",width=>$l_width}],
+        "1hour" => [{term=>"1hour",width=>$l_width}],
+        custom => [{term=>"custom",width=>$l_width}],
+    );
+    my $term = $result->valid('term');
+    my $terms = $terms{$term};
+    $c->render('server.tx', { terms => $terms, term => $term, result => $result });
 };
 
 sub timestr {
@@ -89,7 +129,7 @@ get '/graph' => [qw/fill_config get_server get_plugin/] => sub {
         'term' => {
             default => 'day',
             rule => [
-                [['CHOICE',qw/year month week day 3days 8hours 1hour custom/],'invalid drawing term'],
+                [['CHOICE',qw/year month week day 3days 8hours 4hours 1hour custom/],'invalid drawing term'],
             ],
         },
         'from' => {
@@ -105,7 +145,7 @@ get '/graph' => [qw/fill_config get_server get_plugin/] => sub {
             ],
         },
         'width' => {
-            default => 480,
+            default => 460,
             rule => [
                 ['NATURAL','invalid width'],
             ],
