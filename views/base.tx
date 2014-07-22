@@ -5,6 +5,7 @@
 <title>Kurado - Server Performance Metrics</title>
 <link rel="shortcut icon" href="<: $c.req.uri_for('/favicon.ico') :>" type="image/vnd.microsoft.icon" />
 <link rel="stylesheet" href="<: $c.req.uri_for('/css/bootstrap.min.css') :>">
+<link rel="stylesheet" href="<: $c.req.uri_for('/css/bootstrap-datetimepicker.min.css') :>">
 <link rel="stylesheet" href="<: $c.req.uri_for('/css/local.css') :>">
 </head>
 <body>
@@ -21,7 +22,7 @@
     </div>
     <div class="navbar-collapse collapse" id="navbar-main">
       <ul class="nav navbar-nav navbar-right">
-        <li><a href="/">-</a></li>
+        <li><a href="/"><span class="glyphicon glyphicon-home"></span></a></li>
       </ul>
     </div>
   </div>
@@ -30,10 +31,18 @@
 : block content -> { }
 
 <script type="text/javascript" src="<: $c.req.uri_for('/js/jquery.min.js') :>"></script>
-<script type="text/javascript" src="<: $c.req.uri_for('/js/jquery.color-2.1.2.min.js') :>"></script>
 <script type="text/javascript" src="<: $c.req.uri_for('/js/bootstrap.min.js') :>"></script>
+<script type="text/javascript" src="<: $c.req.uri_for('/js/bootstrap-datetimepicker.min.js') :>"></script>
 <script>
 $(function(){
+  $('.form-datetime').datetimepicker({
+    format: 'yyyy-mm-dd hh:ii:00',
+    minuteStep: 15,
+    autoclose: true,
+    todayBtn: true,
+    todayHighlight: true
+  });
+
   $('#subnav').map(function(){
     var subnav = $(this);
     var bgclr = subnav.css('background-color');

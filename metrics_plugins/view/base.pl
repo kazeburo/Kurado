@@ -43,7 +43,7 @@ sub metrics_list {
     }
     # cpu, load-avg,  memory-usage, tcp-established
     $list .= "# CPU Memory\n";
-    $list .= "$_\n"for qw/cpu load-avg memory-usage tcp-established/;
+    $list .= "$_\n"for qw/cpu loadavg-1 memory-usage tcp-established/;
 
     # disk usage
     my @usage_devices = split /,/, $meta->{'disk-usage-devices'} || '';
@@ -57,7 +57,8 @@ sub metrics_list {
     my @io_devices = split /,/, $meta->{'disk-io-devices'} || '';
     foreach my $device ( @usage_devices ) {
         $list .= "# Disk Usage($device)\n";
-        $list .= "disk-io-$device\n";
+        $list .= "disk-io-byte-$device\n";
+        $list .= "disk-io-count-$device\n";
     }
 
     print $list;
@@ -65,12 +66,26 @@ sub metrics_list {
 
 sub metrics_graph {
     my $plugin = shift;
+    my $graph = $plugin->graph;
+    my $def = '';
+    if ( $graph =~ m!^(cpu|loadavg-1|memory-usage|tcp-established)$! ) {
+        $def = $plugin->render($1);
+    }
+    elsif ( $graph =~ m!^(traffic|disk-io-byte|disk-io-count|disk-usage)-(.+)$! ) {
+        $def = $plugin->render($1,{device=>$2});
+    }
+    else {
+        die "this plugin does not support graph '$graph'";
+    }
+    print $def."\n";
 }
 
-if ($plugin->{graph} ) {
+if ($plugin->graph ) {
     metrics_graph($plugin);
 }
-metrics_list($plugin);
+else {
+    metrics_list($plugin);
+}
 
 =pod
 
@@ -99,8 +114,9 @@ under the same terms as Perl itself.
 
 __DATA__
 @@ traffic
-DEF:ind=<%RRD%>:in:AVERAGE
-DEF:outd=<%RRD%>:out:AVERAGE
+Throughput
+DEF:ind=<%RRD_FOR traffic-<?= $device ?>-rxbytes.derive %>:n:AVERAGE
+DEF:outd=<%RRD_FOR traffic-<?= $device ?>-txbytes.derive %>:n:AVERAGE
 CDEF:in=ind,0,1250000000,LIMIT,8,*
 CDEF:out=outd,0,1250000000,LIMIT,8,*
 AREA:in#00C000:Inbound  
@@ -112,4 +128,199 @@ GPRINT:out:LAST:Cur\:%6.2lf%sbps
 GPRINT:out:AVERAGE:Ave\:%6.2lf%sbps
 GPRINT:out:MAX:Max\:%6.2lf%sbps\l
 
+@@ cpu
+CPU Usage[%]
+DEF:my1=<%RRD_FOR cpu-user.derive %>:n:AVERAGE
+DEF:my2=<%RRD_FOR cpu-nice.derive %>:n:AVERAGE
+DEF:my3=<%RRD_FOR cpu-system.derive %>:n:AVERAGE
+DEF:my4=<%RRD_FOR cpu-idle.derive %>:n:AVERAGE
+DEF:my5=<%RRD_FOR cpu-iowait.derive %>:n:AVERAGE
+DEF:my7=<%RRD_FOR cpu-irq.derive %>:n:AVERAGE
+DEF:my8=<%RRD_FOR cpu-softirq.derive %>:n:AVERAGE
+DEF:my9=<%RRD_FOR cpu-steal.derive %>:n:AVERAGE
+DEF:my10=<%RRD_FOR cpu-guest.derive %>:n:AVERAGE
+DEF:my11=<%RRD_FOR cpu-guest-nice.derive %>:n:AVERAGE
+CDEF:total=my1,my2,+,my3,+,my4,+,my5,+,my7,+,my8,+,my9,+,my10,+,my11,+
+CDEF:my1r=my1,total,/,100,*,0,100,LIMIT
+CDEF:my2r=my2,total,/,100,*,0,100,LIMIT
+CDEF:my3r=my3,total,/,100,*,0,100,LIMIT
+CDEF:my4r=my4,total,/,100,*,0,100,LIMIT
+CDEF:my5r=my5,total,/,100,*,0,100,LIMIT
+CDEF:my7r=my7,total,/,100,*,0,100,LIMIT
+CDEF:my8r=my8,total,/,100,*,0,100,LIMIT
+CDEF:my9r=my9,total,/,100,*,0,100,LIMIT
+CDEF:my10r=my10,total,/,100,*,0,100,LIMIT
+CDEF:my11r=my11,total,/,100,*,0,100,LIMIT
+AREA:my1r#c0c0c0:User   
+GPRINT:my1r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my1r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my1r:MAX:Max\:%5.1lf[%%]
+GPRINT:my1r:MIN:Min\:%5.1lf[%%]\l
+STACK:my2r#000080:Nice   
+GPRINT:my2r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my2r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my2r:MAX:Max\:%5.1lf[%%]
+GPRINT:my2r:MIN:Min\:%5.1lf[%%]\l
+STACK:my3r#008080:System 
+GPRINT:my3r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my3r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my3r:MAX:Max\:%5.1lf[%%]
+GPRINT:my3r:MIN:Min\:%5.1lf[%%]\l
+STACK:my4r#800080:Idle   
+GPRINT:my4r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my4r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my4r:MAX:Max\:%5.1lf[%%]
+GPRINT:my4r:MIN:Min\:%5.1lf[%%]\l
+STACK:my5r#f00000:Wait   
+GPRINT:my5r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my5r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my5r:MAX:Max\:%5.1lf[%%]
+GPRINT:my5r:MIN:Min\:%5.1lf[%%]\l
+STACK:my7r#F39034:Intr   
+GPRINT:my7r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my7r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my7r:MAX:Max\:%5.1lf[%%]
+GPRINT:my7r:MIN:Min\:%5.1lf[%%]\l
+STACK:my8r#3D282A:SoftIRQ
+GPRINT:my8r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my8r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my8r:MAX:Max\:%5.1lf[%%]
+GPRINT:my8r:MIN:Min\:%5.1lf[%%]\l
+STACK:my9r#EBF906:Steal  
+GPRINT:my9r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my9r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my9r:MAX:Max\:%5.1lf[%%]
+GPRINT:my9r:MIN:Min\:%5.1lf[%%]\l
+STACK:my10r#81F781:Guest  
+GPRINT:my10r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my10r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my10r:MAX:Max\:%5.1lf[%%]
+GPRINT:my10r:MIN:Min\:%5.1lf[%%]\l
+STACK:my11r#8181F7:GstNice
+GPRINT:my11r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my11r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my11r:MAX:Max\:%5.1lf[%%]
+GPRINT:my11r:MIN:Min\:%5.1lf[%%]\l
 
+@@ loadavg-1
+Load Average
+DEF:my1=<%RRD_FOR loadavg-1.gauge %>:n:AVERAGE
+AREA:my1#00C000:Load Average
+GPRINT:my1:LAST:Cur\:%6.2lf
+GPRINT:my1:AVERAGE:Ave\:%6.2lf
+GPRINT:my1:MAX:Max\:%6.2lf
+GPRINT:my1:MIN:Min\:%6.2lf\l
+
+@@ memory-usage
+Memory Usage
+#dump    base.metrics.memory-buffers.gauge        36732928       1406000670
+#dump    base.metrics.memory-cached.gauge         75522048       1406000670
+#dump    base.metrics.memory-free.gauge          178077696       1406000670
+#dump    base.metrics.memory-swap-total.gauge    973070336       1406000670
+#dump    base.metrics.memory-swap-used.gauge             0       1406000670
+#dump    base.metrics.memory-total.gauge         480718848       1406000670
+#dump    base.metrics.memory-used.gauge          220954624       1406000670
+DEF:used=<%RRD_FOR memory-used.gauge %>:n:AVERAGE
+DEF:buffers=<%RRD_FOR memory-buffers.gauge %>:n:AVERAGE
+DEF:cached=<%RRD_FOR memory-cached.gauge %>:n:AVERAGE
+DEF:free=<%RRD_FOR memory-free.gauge %>:n:AVERAGE
+DEF:total=<%RRD_FOR memory-total.gauge %>:n:AVERAGE
+DEF:swap-used=<%RRD_FOR memory-swap-used.gauge %>:n:AVERAGE
+DEF:swap-total=<%RRD_FOR memory-swap-total.gauge %>:n:AVERAGE
+# used
+AREA:used#ffdd67:used      
+GPRINT:used:LAST:Cur\:%6.2lf%sByte
+GPRINT:used:AVERAGE:Ave\:%6.2lf%sByte
+GPRINT:used:MAX:Max\:%6.2lf%sByte\l
+# buffer
+STACK:buffers#8a8ae6:buffers   
+GPRINT:buffers:LAST:Cur\:%6.2lf%sByte
+GPRINT:buffers:AVERAGE:Ave\:%6.2lf%sByte
+GPRINT:buffers:MAX:Max\:%6.2lf%sByte\l
+# cached
+STACK:cached#6060e0:cached    
+GPRINT:cached:LAST:Cur\:%6.2lf%sByte
+GPRINT:cached:AVERAGE:Ave\:%6.2lf%sByte
+GPRINT:cached:MAX:Max\:%6.2lf%sByte\l
+# avail real
+STACK:free#80e080:avail real
+GPRINT:free:LAST:Cur\:%6.2lf%sByte
+GPRINT:free:AVERAGE:Ave\:%6.2lf%sByte
+GPRINT:free:MAX:Max\:%6.2lf%sByte\l
+# total real
+LINE2:total#000080:total real
+GPRINT:total:LAST:Cur\:%6.2lf%sByte
+GPRINT:total:AVERAGE:Ave\:%6.2lf%sByte
+GPRINT:total:MAX:Max\:%6.2lf%sByte\l
+# used swap
+LINE2:swap-used#ff6060:used  swap
+GPRINT:swap-used:LAST:Cur\:%6.2lf%sByte
+GPRINT:swap-used:AVERAGE:Ave\:%6.2lf%sByte
+GPRINT:swap-used:MAX:Max\:%6.2lf%sByte\l
+# total swap
+LINE1:swap-total#F8E0E6:total swap
+GPRINT:swap-total:LAST:Cur\:%6.2lf%sByte
+GPRINT:swap-total:AVERAGE:Ave\:%6.2lf%sByte
+GPRINT:swap-total:MAX:Max\:%6.2lf%sByte\l
+
+@@ tcp-established
+TCP Established
+DEF:tcpestab=<%RRD_FOR tcp-established.gauge %>:n:AVERAGE
+AREA:tcpestab#00C000:Established
+GPRINT:tcpestab:LAST:Cur\:%6.0lf
+GPRINT:tcpestab:AVERAGE:Ave\:%6.0lf
+GPRINT:tcpestab:MAX:Max\:%6.0lf
+GPRINT:tcpestab:MIN:Min\:%6.0lf\l
+
+@@ disk-io-byte
+DiskIO
+# base.metrics.disk-io-mapper_VolGroup-lv_swap-read-sectors.derive    3272    1404873350
+# base.metrics.disk-io-mapper_VolGroup-lv_swap-write-sectors.device   5040    1404873350
+DEF:my1a=<%RRD_FOR disk-io-<?= $device ?>-read-sectors.derive %>:n:AVERAGE
+DEF:my2a=<%RRD_FOR disk-io-<?= $device ?>-write-sectors.derive %>:n:AVERAGE
+CDEF:my1=my1a,0,200000000,LIMIT
+CDEF:my2=my2a,0,200000000,LIMIT
+AREA:my1#00C000:Read(B/S)  
+GPRINT:my1:LAST:Cur\: %4.1lf%s
+GPRINT:my1:AVERAGE:Ave\: %4.1lf%s
+GPRINT:my1:MAX:Max\: %4.1lf%s
+GPRINT:my1:MIN:Min\: %4.1lf%s\l
+STACK:my2#0000C0:Write(B/S) 
+GPRINT:my2:LAST:Cur\: %4.1lf%s
+GPRINT:my2:AVERAGE:Ave\: %4.1lf%s
+GPRINT:my2:MAX:Max\: %4.1lf%s
+GPRINT:my2:MIN:Min\: %4.1lf%s\l
+
+@@ disk-io-count
+DiskIO Count
+DEF:my1a=<%RRD_FOR disk-io-<?= $device ?>-read-ios.derive %>:n:AVERAGE
+DEF:my2a=<%RRD_FOR disk-io-<?= $device ?>-write-ios.derive %>:n:AVERAGE
+CDEF:my1=my1a,0,1000000,LIMIT
+CDEF:my2=my2a,0,1000000,LIMIT
+AREA:my1#c0c0c0:Read  
+GPRINT:my1:LAST:Cur\: %4.1lf%s
+GPRINT:my1:AVERAGE:Ave\: %4.1lf%s
+GPRINT:my1:MAX:Max\: %4.1lf%s
+GPRINT:my1:MIN:Min\: %4.1lf%s\l
+STACK:my2#800080:Write 
+GPRINT:my2:LAST:Cur\: %4.1lf%s
+GPRINT:my2:AVERAGE:Ave\: %4.1lf%s
+GPRINT:my2:MAX:Max\: %4.1lf%s
+GPRINT:my2:MIN:Min\: %4.1lf%s\l
+
+@@ disk-usage
+Disk Usage
+# base.metrics.disk-usage-mapper_VolGroup-lv_root-available.gauge 36329940    1404873350
+# base.metrics.disk-usage-mapper_VolGroup-lv_root-used.gauge  1487404 1404873350
+DEF:my1a=<%RRD_FOR disk-usage-<?= $device ?>-available.gauge %>:n:AVERAGE
+DEF:my2a=<%RRD_FOR disk-usage-<?= $device ?>-used.gauge %>:n:AVERAGE
+CDEF:my1b=my1a,1000,*
+CDEF:my2b=my2a,1000,*
+VDEF:slope=my2b,LSLSLOPE
+VDEF:cons=my2b,LSLINT
+CDEF:lsl2=my2b,POP,slope,COUNT,*,cons,+
+AREA:my1b#ff99ff:Total
+GPRINT:my1b:LAST:Cur\:%4.2lf%sB
+AREA:my2b#cc00ff:Used 
+GPRINT:my2b:LAST:Cur\:%4.2lf%sB\l
+LINE1:lsl2#00A000:Prediction:dashes=2,8

@@ -10,6 +10,7 @@ use File::Basename;
 use File::Path qw/make_path/;
 use Data::Validator;
 use URI::Escape;
+use Log::Minimal;
 
 has 'data_dir' => (
     is => 'ro',
@@ -89,6 +90,189 @@ sub update {
     die "rrd update failed: $@" if $@;
     return 1;
 }
+
+sub graph {
+    state $rule = Data::Validator->new(
+        def => 'Str',
+        host => 'Kurado::Object::Host',
+        plugin => 'Kurado::Object::Plugin',
+        term => 'Str',
+        from => 'Str',
+        to => 'Str',
+        width => 'Str',
+    )->with('Method');
+    my ($self, $args) = $rule->validate(@_);
+
+    my ($title,$def) = $self->parse_graph_def(
+        plugin => $args->{plugin},
+        host => $args->{host},
+        def => $args->{def},
+    );
+
+    my $period_title;
+    my $period;
+    my $end = 'now';
+    my $xgrid;
+
+    if ( $args->{term} eq 'custom' ) {
+        my $from_time = HTTP::Date::str2time($args->{from});  
+        die "invalid from date: $args->{from}\n" unless $from_time;
+        my $to_time = $args->{to} ? HTTP::Date::str2time($args->{to}) : time;
+        die "invalid to date: $args->{to}\n" unless $to_time;
+        die "from($args->{from}) is newer than to($args->{to})\n" if $from_time > $to_time;
+        $period_title = "$args->{from} to $args->{to}";
+        $period = $from_time;
+        $end = $to_time;
+        my $diff = $to_time - $from_time;
+        if ( $diff < 3 * 60 * 60 ) {
+            $xgrid = 'MINUTE:10:MINUTE:20:MINUTE:10:0:%M';
+        }
+        elsif ( $diff < 4 * 24 * 60 * 60 ) {
+            $xgrid = 'HOUR:6:DAY:1:HOUR:6:0:%H';
+        }
+        elsif ( $diff < 14 * 24 * 60 * 60) {
+            $xgrid = 'DAY:1:DAY:1:DAY:2:86400:%m/%d';
+        }
+        elsif ( $diff < 45 * 24 * 60 * 60) {
+            $xgrid = 'DAY:1:WEEK:1:WEEK:1:0:%F';
+        }
+        else {
+            $xgrid = 'WEEK:1:MONTH:1:MONTH:1:2592000:%b';
+        }
+    }
+    elsif ( $args->{term} eq 'year' ) {
+        $period_title = 'Year';
+        $period = -1 * 60 * 60 * 24 * 400;
+        $xgrid = 'WEEK:1:MONTH:1:MONTH:1:2592000:%b'
+    }
+    elsif ( $args->{term} eq 'month' ) {
+        $period_title = 'Month';
+        $period = -1 * 60 * 60 * 24 * 35;
+        $xgrid = 'DAY:1:WEEK:1:WEEK:1:604800:Week %W'
+    }
+    elsif ( $args->{term} eq 'week' ) {
+        $period_title = 'Week';
+        $period = -1 * 60 * 60 * 24 * 8;
+        $xgrid = 'DAY:1:DAY:1:DAY:1:86400:%a'
+    }
+    elsif ( $args->{term} eq 'day' ) {
+        $period_title = 'Day';
+        $period = -1 * 60 * 60 * 33; # 33 hours
+        $xgrid = 'HOUR:1:HOUR:2:HOUR:2:0:%H';
+    }
+    elsif ( $args->{term} eq '3days' ) {
+        $period_title = '3 Days';
+        $period = -1 * 60 * 60 * 24 * 3;
+        $xgrid = 'HOUR:6:DAY:1:HOUR:6:0:%H';
+    }
+    elsif ( $args->{term} eq '8hours' ) {
+        $period_title = '8 Hours';
+        $period = -1 * 8 * 60 * 60;
+        $xgrid = 'MINUTE:30:HOUR:1:HOUR:1:0:%H:%M';
+    }
+    else {
+        $period_title = 'Hour';
+        $period = -1 * 60 * 60 * 2;
+        $xgrid = 'MINUTE:10:MINUTE:20:MINUTE:10:0:%M';
+    }
+
+    $period_title = $period_title . ' ' . $args->{host}->hostname;
+    my ($tmpfh, $tmpfile) = File::Temp::tempfile(UNLINK => 0, SUFFIX => ".png");
+    my @opt = (
+        $tmpfile,
+        '-w', $args->{width},
+        '-l', 0, #minimum
+        '-u', 2, #maximum
+        '-x', $xgrid,
+        '-s', $period,
+        '-e', $end,
+        '-v', $title,
+        '--slope-mode',
+        '--disable-rrdtool-tag',
+        '--color', 'BACK#'.uc('272b30'),
+        '--color', 'CANVAS#'.uc('373b40'),
+        '--color', 'FONT#'.uc('c8c8c8'),
+        '--color', 'FRAME#'.uc('666666'),
+        '--color', 'AXIS#'.uc('aaaaaa'),
+        '--color', 'SHADEA#'.uc('222222'),
+        '--color', 'SHADEB#'.uc('222222'),
+        '--border', 1,
+        '-t', $period_title,
+        '--font', "AXIS:8:",
+        '--font', "LEGEND:8:",
+        @$def,
+    );
+    my @graphv;
+    eval {
+        @graphv = RRDs::graph(map { Encode::encode_utf8($_) } @opt);
+        my $ERR=RRDs::error;
+        die $ERR if $ERR;
+    };
+    if ( $@ ) {
+        unlink($tmpfile);
+        die "draw graph failed: $@";
+    }
+
+    open( my $fh, '<:bytes', $tmpfile ) or die "cannot open graph tmpfile: $!";
+    local $/;
+    my $graph_img = <$fh>;
+    unlink($tmpfile);
+
+    die 'something wrong with image' unless $graph_img;
+
+    return ($graph_img,\@graphv);
+}
+
+sub parse_graph_def {
+    state $rule = Data::Validator->new(
+        def => 'Str',
+        host => 'Kurado::Object::Host',
+        plugin => 'Kurado::Object::Plugin',
+    )->with('Method');
+    my ($self, $args) = $rule->validate(@_);
+
+# DEF:ind=<%RRD_FOR traffic-eth1-rxbytes.derive %>:n:AVERAGE
+# DEF:outd=<%RRD_FOR traffic-eth1-txbytes.derive %>:n:AVERAGE
+# CDEF:in=ind,0,1250000000,LIMIT,8,*
+# CDEF:out=outd,0,1250000000,LIMIT,8,*
+# AREA:in#00C000:Inbound  
+# GPRINT:in:LAST:Cur\:%6.2lf%sbps
+# GPRINT:in:AVERAGE:Ave\:%6.2lf%sbps
+# GPRINT:in:MAX:Max\:%6.2lf%sbps\l
+# LINE1:out#0000FF:Outbound 
+# GPRINT:out:LAST:Cur\:%6.2lf%sbps
+# GPRINT:out:AVERAGE:Ave\:%6.2lf%sbps
+# GPRINT:out:MAX:Max\:%6.2lf%sbps\l
+    my $def = $args->{def};
+    $def =~ s!<%RRD_FOR\s+(.+?\.(?:gauge|counter|derive|absolute))\s+%>!&rrd_path_for($self,$args->{plugin},$args->{host},$1)!ge;
+    $def =~ s!<%RRD_EXTEND\s+(.+?) +(.+?) +(.+?\.(?:gauge|counter|derive|absolute))\s+%>!&rrd_path_extend($self,$1,$2,$3)!ge;
+    my @def = grep {$_} grep { $_ !~ m!^\s*#! } split /\n/,$def;
+    my $title = shift @def;
+    $title,\@def;
+}
+
+
+sub rrd_path_for {
+    my ($self, $plugin,$host,$key) = @_;
+    File::Spec->catfile(
+        $self->data_dir,
+        $host->address,
+        $plugin->plugin_identifier_escaped,
+        uri_escape($key) . '.rrd'
+    );
+}
+
+sub rrd_path_extend {
+    my ($self, $plugin,$ip, $key) = @_;
+    File::Spec->catfile(
+        $self->data_dir,
+        $ip,
+        $plugin,
+        uri_escape($key) . '.rrd'
+    );
+    
+}
+
 
 1;
 

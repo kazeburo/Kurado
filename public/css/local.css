@@ -1,5 +1,5 @@
 body {
-  min-width: 1000px;
+  min-width: 1200px;
 }
 
 .navbar-nav > li > a {
@@ -47,12 +47,12 @@ body {
 
 .nav-sidebar .list-group .list-group-item.active {
   background-color: #272b30;
-  border-right: 6px solid #272b30;
+  border-right: 1px solid #272b30;
 /*
   border-top-right-radius: 3px;
   border-bottom-right-radius: 3px;
-*/
   margin: 1px 0px 1px 0px;
+*/
 }
 
 .nav-sidebar .list-group a.list-group-item:hover {
@@ -172,5 +172,15 @@ h4.metrics-label {
 }
 
 .graph-nav {
-  margin-top: 10px;
+  overflow: hidden;
+  margin: 0px -5px -5px -5px;
+  padding: 7px 10px 5px;
+}
+
+#subnav.affix .graph-nav {
+  background-color: #272b30
+}
+
+.graphs {
+  margin: 2px 0px;
 }

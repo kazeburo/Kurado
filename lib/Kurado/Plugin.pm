@@ -7,6 +7,7 @@ use 5.10.0;
 use Getopt::Long;
 use Pod::Usage;
 use JSON::XS;
+use Text::MicroTemplate::DataSectionEx;
 
 my $_JSON = JSON::XS->new->utf8;
 
@@ -148,6 +149,19 @@ sub uptime2str {
     sprintf("up %d days, %2d:%02d", $day, $hour, $min);
 }
 
+sub render {
+    my $self = shift;
+    my $template = shift;
+    my $args = defined $_[0] && ref $_[0] ? $_[0] : { @_ };
+    my $mt = Text::MicroTemplate::DataSectionEx->new(
+        extension => "",
+        package => $self->{caller}->[0],
+        template_args => $args,
+    );
+    $mt->render($template);
+}
+
 1;
+
 
 

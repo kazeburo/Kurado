@@ -6,9 +6,11 @@ use utf8;
 use 5.10.0;
 use Mouse;
 use Log::Minimal;
+use Data::Validator;
 
 use Kurado::Plugin::Compile;
 use Kurado::Storage;
+use Kurado::RRD;
 
 has 'config' => (
     is => 'ro',
@@ -142,9 +144,38 @@ sub parse_metrics_list {
 }
 
 sub metrics_graph {
-
+    state $rule = Data::Validator->new(
+        graph => 'Str',
+        plugin => 'Kurado::Object::Plugin',
+        term => 'Str',
+        from => 'Str',
+        to => 'Str',
+        width => 'Str'
+    )->with('Method');
+    my ($self, $args) = $rule->validate(@_);
+    my ($img,$data);
+    eval {
+        my ($stdout, $stderr, $success) = $self->compile->run(
+            host => $self->host,
+            plugin => $args->{plugin},
+            type => 'view',
+            graph => $args->{graph},
+        );
+        die "$stderr\n" unless $success;
+        my $rrd = Kurado::RRD->new(data_dir => $self->config->data_dir);        
+        ($img,$data) = $rrd->graph(
+            def => $stdout,
+            host => $self->host,
+            plugin => $args->{plugin},
+            term => $args->{term},
+            from => $args->{from},
+            to => $args->{to},
+            width => $args->{width},
+        );
+    };
+    die sprintf('address:%s plugin:%s graph:%s: %s'."\n",$self->host->address, $args->{plugin}->plugin, $args->{graph}, $@) if $@;
+    return ($img,$data);
 }
-
 
 
 1;

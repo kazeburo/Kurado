@@ -22,6 +22,8 @@ requires 'Redis::Fast';
 requires 'Parallel::Prefork';
 requires 'File::Zglob';
 requires 'Unicode::EastAsianWidth';
+requires 'Text::MicroTemplate::DataSection';
+requires 'Text::MicroTemplate::Extended';
 
 on 'test' => sub {
     requires 'Test::More',     '0.96';

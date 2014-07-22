@@ -86,7 +86,6 @@ sub memory {
         'Cached'    => 'memory-cached.gauge',
         'SwapTotal' => 'memory-swap-total.gauge',
         'SwapFree'  => 'memory-swap-free.gauge',
-        'Inactive'  => 'memory-inactive.gauge',
     );
 
     open my $fh, '<:utf8', '/proc/meminfo' or die "$!\n";
@@ -104,9 +103,12 @@ sub memory {
         $metrics->{$MEMORY_ITEM{$k}} = int( defined $meminfo{$k} ? $meminfo{$k} :  0);
     }
 
-    $metrics->{'memory-used.gauge'} = 
-        $metrics->{'memory-total.gauge'} - $metrics->{'memory-free.gauge'} - $metrics->{'memory-inactive.gauge'};
+    $metrics->{'memory-used.gauge'} = $metrics->{'memory-total.gauge'}
+        - $metrics->{'memory-free.gauge'}
+        - $metrics->{'memory-buffers.gauge'}
+        - $metrics->{'memory-cached.gauge'};
     $metrics->{'memory-swap-used.gauge'} = $metrics->{'memory-swap-total.gauge'} - $metrics->{'memory-swap-free.gauge'};
+    delete $metrics->{'memory-swap-free.gauge'}
 }
 
 

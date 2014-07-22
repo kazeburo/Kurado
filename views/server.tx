@@ -20,10 +20,7 @@
         <a href="/" class="subnav-brand">Kurado - Server Performance Metrics</a>
       </div>
     </div>
-  </div>
-</div>
-</div>
-
+  </div> <!-- container -->
 
 <div class="container-fluid graph-nav">
   <div class="row">
@@ -41,13 +38,40 @@
       </div>
     </div> <!-- toolbar -->
     </div> <!-- col -->
-    <div class="col-sm-6" style="border-bottom: 1px solid #999">
-      <div>
-        日付指定form
+    <div class="col-sm-6">
+      <form class="form form-inline pull-right" role="form">
+
+      <span class="glyphicon glyphicon-calendar"></span>
+
+      <div class="form-group">
+        <div class="input-group input-group-sm">
+          <span class="input-group-addon">from</span>
+          <input type="text" value="" readonly class="form-control form-datetime">
+        </div>
       </div>
+      <div class="form-group">
+        <div class="input-group input-group-sm">
+          <span class="input-group-addon">to</span>
+          <input type="text" value="" readonly class="form-control form-datetime">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="input-group input-group-sm">
+          <button type="submit" class="btn btn-default btn-sm">表示</button>
+        </div>
+      </div>
+
+      </form>
     </div> <!-- col -->
   </div> <!-- row -->
 </div> <!-- container -->
+
+
+</div> <!-- subnav -->
+</div> <!-- subnav-wrapper -->
+
+
 
 <div class="container-fluid">
   <div class="row">
@@ -72,7 +96,8 @@
     </div>
     : for $metrics.graphs -> $graph {
       <div class="graphs">
-      <: $graph :>
+<img src="<: $c.req.uri_for('/graph',[address=>$c.stash.host.address,plugin_identifier=>$plugin.plugin.plugin_identifier,graph=>$graph,term=>"day"]) :>" />
+<img src="<: $c.req.uri_for('/graph',[address=>$c.stash.host.address,plugin_identifier=>$plugin.plugin.plugin_identifier,graph=>$graph,term=>"week"]) :>" />
       </div>
     : }
 

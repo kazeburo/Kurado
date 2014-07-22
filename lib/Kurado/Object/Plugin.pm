@@ -22,9 +22,19 @@ has 'arguments' => (
 
 __PACKAGE__->meta->make_immutable();
 
+sub new_from_identifier {
+    my $class = shift;
+    my $identifier = shift;
+    my ($plugin, @args) = split /:/, $identifier;
+    $class->new(
+        plugin => $plugin,
+        arguments => \@args,
+    );
+}
+
 sub plugin_identifier {
     my $self = shift;
-    my $str = $self->plugin . (@{$self->arguments}) ? ':'.join(":",@{$self->arguments}) : '';
+    my $str = $self->plugin . ((@{$self->arguments}) ? ':'.join(":",@{$self->arguments}) : '');
     $str;
 }
 
