@@ -29,6 +29,7 @@ body {
   margin-right: -15px;
 }
 
+
 .nav-sidebar .list-group {
   margin-bottom: 5px;
   padding-bottom: 3px;
@@ -88,6 +89,17 @@ body {
   text-decoration: none;
   color: #eee;
 }
+
+#subnav .subnav-logo {
+  background-image: url("../img/kurado.png");
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+}
+#subnav .subnav-logo:before {
+  content: " ";
+}
+
 #subnav .container-fluid .row {
   margin: 0px;
   padding: 5px 0px 5px 0px;
@@ -172,11 +184,13 @@ h3.plugin-name {
 
 h4.metrics-label {
   font-size: 19px;
-  color: #222;
-  border-top: 1px solid #222;
-  background-color: #bbb;
-  padding: 3px 3px 3px 10px;
-  margin-bottom: 3px;
+  color: #313131;
+  /* border-top: 1px solid #222; */
+  background-color: #c8c8c8;
+  padding: 3px 3px 3px 8px;
+  margin-bottom: 5px;
+  text-shadow: none;
+  border-radius: 2px;
 }
 
 .metrics-meta {

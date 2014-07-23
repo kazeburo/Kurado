@@ -119,7 +119,7 @@ get '/server' => [qw/fill_config get_server/] => sub {
 sub timestr {
     my $time = shift;
     my @lt = localtime($time);
-    sprintf('%04d/%02d/%02d %02d:%02d:%02d',$lt[5]+1900,$lt[4]+1,@lt[3,2,1,0]);
+    sprintf('%04d-%02d-%02d %02d:%02d:%02d',$lt[5]+1900,$lt[4]+1,@lt[3,2,1,0]);
     
 }
 

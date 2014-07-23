@@ -186,7 +186,7 @@ sub graph {
     my @opt = (
         $tmpfile,
         '-w', $args->{width},
-        '-h', 120,
+        '-h', 110,
         '-l', 0, #minimum
         '-u', 2, #maximum
         '-x', $xgrid,

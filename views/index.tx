@@ -6,7 +6,7 @@
   <div class="container-fluid">
     <div class="row">
       <div class="col-sm-3">
-      <span class="glyphicon glyphicon-th"></span> サービス一覧
+      <a href="/"><span class="subnav-logo"></span></a>
       </div>
       <div class="col-sm-5">
         <button type="button" class="btn btn-default btn-xs" disabled="disabled"><span class="glyphicon glyphicon-unchecked"></span> チェックを外す</button>
@@ -23,22 +23,13 @@
 <div class="container-fluid">
   <div class="row">
     <div class="col-sm-3">
+    <h5><span class="glyphicon glyphicon-th"></span> サービス一覧</h5>
     <div class="nav-sidebar">
       <div class="list-group">
         <a href="<: $c.req.uri_for('/') :>" class="list-group-item <: $c.req.param('service') ? "" : "active" :>">すべて表示</a>
       : for $c.stash.config_loader.sorted_services -> $service {
         <a href="<: $c.req.uri_for('/',['service'=>$service.service]) :>" class="list-group-item <: $c.req.param('service') == $service.service ? "active" : "" :>"><: $service.service :><span class="badge"><: $service.host_num :></span></a>
       : } 
-        <a href="#" class="list-group-item">foo</a>
-        <a href="#" class="list-group-item">bar</a>
-        <a href="#" class="list-group-item">baz</a>
-        <a href="#" class="list-group-item">foo</a>
-        <a href="#" class="list-group-item">bar</a>
-        <a href="#" class="list-group-item">baz</a>
-        <a href="#" class="list-group-item">foo</a>
-        <a href="#" class="list-group-item">bar</a>
-        <a href="#" class="list-group-item">baz</a>
-
       </div>
     </div>
     </div>
@@ -64,139 +55,11 @@
       <span class="host-comments"><: $host.comments :></span>
      </td>
     </tr>
-    <tr>
-     <td>
-      <span class="glyphicon glyphicon-remove icon-ok"></span>
-      <span class="host-checkbox"><input  name="server-address" type="checkbox" value="<: $host.address :>" /></span>
-      <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>" class="host-address"><: $host.address :></a>
-      <span class="host-hostname"><: $host.hostname :></span>
-      <span class="host-comments"><: $host.comments :></span>
-     </td>
-    </tr>
-    <tr>
-     <td>
-      <span class="glyphicon glyphicon-remove icon-ok"></span>
-      <span class="host-checkbox"><input  name="server-address" type="checkbox" value="<: $host.address :>" /></span>
-      <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>" class="host-address"><: $host.address :></a>
-      <span class="host-hostname"><: $host.hostname :></span>
-      <span class="host-comments"><: $host.comments :></span>
-     </td>
-    </tr>
-    <tr>
-     <td>
-      <span class="glyphicon glyphicon-remove icon-ok"></span>
-      <span class="host-checkbox"><input  name="server-address" type="checkbox" value="<: $host.address :>" /></span>
-      <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>" class="host-address"><: $host.address :></a>
-      <span class="host-hostname"><: $host.hostname :></span>
-      <span class="host-comments"><: $host.comments :></span>
-     </td>
-    </tr>
-    <tr>
-     <td>
-      <span class="glyphicon glyphicon-remove icon-ok"></span>
-      <span class="host-checkbox"><input  name="server-address" type="checkbox" value="<: $host.address :>" /></span>
-      <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>" class="host-address"><: $host.address :></a>
-      <span class="host-hostname"><: $host.hostname :></span>
-      <span class="host-comments"><: $host.comments :></span>
-     </td>
-    </tr>
-    <tr>
-     <td>
-      <span class="glyphicon glyphicon-remove icon-ok"></span>
-      <span class="host-checkbox"><input  name="server-address" type="checkbox" value="<: $host.address :>" /></span>
-      <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>" class="host-address"><: $host.address :></a>
-      <span class="host-hostname"><: $host.hostname :></span>
-      <span class="host-comments"><: $host.comments :></span>
-     </td>
-    </tr>
-    <tr>
-     <td>
-      <span class="glyphicon glyphicon-remove icon-ok"></span>
-      <span class="host-checkbox"><input  name="server-address" type="checkbox" value="<: $host.address :>" /></span>
-      <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>" class="host-address"><: $host.address :></a>
-      <span class="host-hostname"><: $host.hostname :></span>
-      <span class="host-comments"><: $host.comments :></span>
-     </td>
-    </tr>
-    <tr>
-     <td>
-      <span class="glyphicon glyphicon-remove icon-ok"></span>
-      <span class="host-checkbox"><input  name="server-address" type="checkbox" value="<: $host.address :>" /></span>
-      <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>" class="host-address"><: $host.address :></a>
-      <span class="host-hostname"><: $host.hostname :></span>
-      <span class="host-comments"><: $host.comments :></span>
-     </td>
-    </tr>
-    <tr>
-     <td>
-      <span class="glyphicon glyphicon-remove icon-ok"></span>
-      <span class="host-checkbox"><input  name="server-address" type="checkbox" value="<: $host.address :>" /></span>
-      <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>" class="host-address"><: $host.address :></a>
-      <span class="host-hostname"><: $host.hostname :></span>
-      <span class="host-comments"><: $host.comments :></span>
-     </td>
-    </tr>
-    <tr>
-     <td>
-      <span class="glyphicon glyphicon-remove icon-ok"></span>
-      <span class="host-checkbox"><input  name="server-address" type="checkbox" value="<: $host.address :>" /></span>
-      <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>" class="host-address"><: $host.address :></a>
-      <span class="host-hostname"><: $host.hostname :></span>
-      <span class="host-comments"><: $host.comments :></span>
-     </td>
-    </tr>
-    <tr>
-     <td>
-      <span class="glyphicon glyphicon-remove icon-ok"></span>
-      <span class="host-checkbox"><input  name="server-address" type="checkbox" value="<: $host.address :>" /></span>
-      <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>" class="host-address"><: $host.address :></a>
-      <span class="host-hostname"><: $host.hostname :></span>
-      <span class="host-comments"><: $host.comments :></span>
-     </td>
-    </tr>
-
     : } # host
     </table>
     </div>
   : } # section
 : } # service
-
-
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
 
     </div> <!-- col -->
   </div> <!-- row -->
