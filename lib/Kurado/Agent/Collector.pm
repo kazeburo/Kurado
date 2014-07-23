@@ -65,7 +65,7 @@ sub collect_plugins {
                 }
                 $ret[0] = "$plugin_key.$ret[0]";
                 $ret[2] ||= $time;
-                $body .= join("\t", @ret[0,1,2])."\n";
+                $body .= join("\t", $self_ip, @ret[0,1,2])."\n";
             }
         };
         if ( $@ ) {

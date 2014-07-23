@@ -32,6 +32,7 @@ sub new_from_identifier {
     );
 }
 
+
 sub plugin_identifier {
     my $self = shift;
     my $str = $self->plugin . ((@{$self->arguments}) ? ':'.join(":",@{$self->arguments}) : '');

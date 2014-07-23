@@ -203,13 +203,7 @@ sub timetick_publisher {
             $next_tick = time + $interval;
             my $msg = $sub->();
             if ( ref $msg ) {
-                $self->send_message(
-                    'RPUSH', $msg->[0], $msg->[1]
-                ) or die "failed to send_message 'RPUSH': $!\n";
-                my $res = $self->read_message();
-                if ( !ref $res || !$res->success ) {
-                    die "failed to push msg: ".$res->error."\n";
-                }
+                $self->enqueue(@$msg);
             }
         }
     }
@@ -248,6 +242,17 @@ sub subscribe {
     }
 }
 
+sub enqueue {
+    my ($self,$key,$val) = @_;
+    $self->send_message(
+        'RPUSH', $key, $val
+    ) or die "failed to send_message 'RPUSH': $!\n";
+    my $res = $self->read_message();
+    if ( !ref $res || !$res->success ) {
+        die "failed to push msg: ".$res->error."\n";
+    }
+    $res;
+}
 
 # returns (positive) number of bytes read, or undef if the socket is to be closed
 sub read_timeout {

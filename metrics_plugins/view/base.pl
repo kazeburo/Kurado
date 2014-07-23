@@ -91,11 +91,11 @@ else {
 
 =head1 NAME
 
-display/base.pl - display plugin for base metrics
+view/base.pl - display plugin for base metrics
 
 =head1 SYNOPSIS
 
-  % display/base.pl --help
+  % view/base.pl --help
 
 =head1 DESCRIPTION
 

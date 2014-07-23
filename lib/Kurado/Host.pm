@@ -178,6 +178,62 @@ sub metrics_graph {
 }
 
 
+sub fetch_metrics {
+    state $rule = Data::Validator->new(
+        plugin => 'Kurado::Object::Plugin',
+    )->with('Method');
+    my ($self, $args) = $rule->validate(@_);
+    my $body = '';
+    eval {
+        my ($stdout, $stderr, $success) = $self->compile->run(
+            host => $self->host,
+            plugin => $args->{plugin},
+            type => 'fetch',
+        );
+        die "$stderr\n" unless $success;
+        $body .= $self->parse_fetched_metrics(
+            plugin => $args->{plugin},
+            result => $stdout
+        );
+    };
+    if ( $@ ) {
+        my $warn = $@;
+        $warn =~ s!(?:\n|\r)!!g;
+        my $time = time;
+        my $plugin_key = $args->{plugin}->plugin_identifier_escaped;
+        my $self_ip = $self->host->address;
+        $body .= "$self_ip\t$plugin_key.warn.command\t$warn\t$time\n";
+    }
+    $body;
+}
+
+sub parse_fetched_metrics {
+    state $rule = Data::Validator->new(
+        plugin => 'Kurado::Object::Plugin',
+        result => 'Str',
+    )->with('Method');
+    my ($self, $args) = $rule->validate(@_);
+    my $time = time;
+    my $result = $args->{result};
+    my $plugin_key = $args->{plugin}->plugin_identifier_escaped;
+    my $self_ip = $self->host->address;
+    my $body = '';
+    for my $ret (split /\n/, $result) {
+        chomp($ret);
+        my @ret = split /\t/,$ret;
+        if ( $ret[0] !~ m!^(?:metrics|meta)\.! ) {
+            $ret[0] = "metrics.$ret[0]";
+        }
+        if ( $ret[0] =~ m!^metrics\.! && $ret[0] !~ m!\.(?:gauge|counter|derive|absolute)$! ) {
+            $ret[0] = "$ret[0].gauge";
+        }
+        $ret[0] = "$plugin_key.$ret[0]";
+        $ret[2] ||= $time;
+        $body .= join("\t", $self_ip, @ret[0,1,2])."\n";
+    }
+    $body;
+}
+
 1;
 
 

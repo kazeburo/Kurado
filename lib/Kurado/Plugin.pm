@@ -149,6 +149,31 @@ sub uptime2str {
     sprintf("up %d days, %2d:%02d", $day, $hour, $min);
 }
 
+sub unit {
+    my $self = shift;
+    my $n = shift;
+    my($base, $unit);
+
+    return $n unless $n =~ /^\d+$/;
+    if ($n >= 1073741824) {
+        $base = 1073741824;
+        $unit = 'GB';
+    } elsif ($n >= 1048576) {
+        $base = 1048576;
+        $unit = 'MB';
+    } elsif ($n >= 1024) {
+        $base = 1024;
+        $unit = 'KB';
+    } else {
+        $base = 1;
+        $unit = 'B';
+    }
+
+    $n = sprintf '%.2f', $n/$base;
+    while($n =~ s/(.*\d)(\d\d\d)/$1,$2/){};
+    return $n.$unit;
+}
+
 sub render {
     my $self = shift;
     my $template = shift;

@@ -8,6 +8,8 @@ use Plack::Loader;
 use Plack::Builder;
 
 use Kurado::Worker::Updater;
+use Kurado::Worker::TimeMage;
+use Kurado::Worker::Fetcher;
 use Kurado::Web;
 
 has 'config_loader' => (
@@ -33,6 +35,12 @@ sub run {
     my $updater = Kurado::Worker::Updater->new(
         config => $self->config_loader->config
     );
+    my $timemage = Kurado::Worker::TimeMage->new(
+        config_loader => $self->config_loader
+    );
+    my $fetcher = Kurado::Worker::Fetcher->new(
+        config_loader => $self->config_loader
+    );
 
     $proclet->service(
         code => sub {
@@ -44,6 +52,31 @@ sub run {
         },
         worker => 1,
         tag => 'updater'
+    );
+
+    $proclet->service(
+        code => sub {
+            local $Log::Minimal::PRINT = sub {
+                my ( $time, $type, $message, $trace,$raw_message) = @_;
+                warn "[$type] $message at $trace\n";
+            };
+            $fetcher->run();
+        },
+        worker => 1,
+        tag => 'fetcher'
+    );
+
+    $proclet->service(
+        code => sub {
+            local $Log::Minimal::PRINT = sub {
+                my ( $time, $type, $message, $trace,$raw_message) = @_;
+                warn "[$type] $message at $trace\n";
+            };
+            $timemage->run();
+        },
+        worker => 1,
+        tag => 'timemage',
+        every => '* * * * *', # every minutes
     );
 
     my $app = Kurado::Web->new(

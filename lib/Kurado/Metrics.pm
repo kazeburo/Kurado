@@ -79,7 +79,7 @@ sub parse_metrics_line {
         die "invalid rrd data type\n";
     }
     
-    my $obj_plugin = Kurado::Object::Plugin->new_from_identifier($plugin);
+    my $obj_plugin = Kurado::Object::Plugin->new_from_identifier(uri_unescape($plugin));
     return Kurado::Object::Msg->new(
         address => $address,
         plugin => $obj_plugin,

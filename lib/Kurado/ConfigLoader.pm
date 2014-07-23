@@ -231,6 +231,10 @@ sub sorted_services {
     ];
 }
 
+sub hosts {
+    $_[0]->{hosts};
+}
+
 sub host_by_address {
     my ($self,$address) = @_;
     return unless exists $self->{hosts}{$address};
@@ -240,6 +244,11 @@ sub host_by_address {
 sub plugins {
     my $self = shift;
     [ keys %{$self->{load_plugins}} ];
+}
+
+sub has_fetch_plugin {
+    my ($self,$plugin) = @_;
+    exists $self->{load_plugins}{$plugin} && grep { $_ eq 'fetch' } @{$self->{load_plugins}{$plugin}};
 }
 
 sub dump {

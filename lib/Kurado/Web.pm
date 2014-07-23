@@ -159,17 +159,21 @@ get '/graph' => [qw/fill_config get_server get_plugin/] => sub {
     if ( $result->has_error ) {
         $c->halt(400,join("\n",@{$result->messages}));
     }
-    
-    my ($img,$data) = $c->stash->{host}->metrics_graph(
-        plugin => $c->stash->{plugin},
-        graph => $result->valid('graph'),
-        term => $result->valid('term'),
-        from => $result->valid('from'),
-        to => $result->valid('to'),
-        width => $result->valid('width'),
-    );
-    $c->res->content_type('text/plain');
-    $c->res->body($img);
+    eval {
+        my ($img,$data) = $c->stash->{host}->metrics_graph(
+            plugin => $c->stash->{plugin},
+            graph => $result->valid('graph'),
+            term => $result->valid('term'),
+            from => $result->valid('from'),
+            to => $result->valid('to'),
+            width => $result->valid('width'),
+        );
+        $c->res->content_type('text/plain');
+        $c->res->body($img);
+    };
+    if ($@) {
+        $c->halt(500,$@);
+    }
     return $c->res;
 };
 
