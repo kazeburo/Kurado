@@ -315,15 +315,16 @@ GPRINT:my2:MIN:Min\: %4.1lf%s\l
 Disk Usage
 # base.metrics.disk-usage-mapper_VolGroup-lv_root-available.gauge 36329940    1404873350
 # base.metrics.disk-usage-mapper_VolGroup-lv_root-used.gauge  1487404 1404873350
-DEF:my1a=<%RRD_FOR disk-usage-<?= $device ?>-available.gauge %>:n:AVERAGE
-DEF:my2a=<%RRD_FOR disk-usage-<?= $device ?>-used.gauge %>:n:AVERAGE
-CDEF:my1b=my1a,1000,*
-CDEF:my2b=my2a,1000,*
-VDEF:slope=my2b,LSLSLOPE
-VDEF:cons=my2b,LSLINT
-CDEF:lsl2=my2b,POP,slope,COUNT,*,cons,+
-AREA:my1b#ff99ff:Total
-GPRINT:my1b:LAST:Cur\:%4.2lf%sB
-AREA:my2b#cc00ff:Used 
-GPRINT:my2b:LAST:Cur\:%4.2lf%sB\l
+DEF:avail=<%RRD_FOR disk-usage-<?= $device ?>-available.gauge %>:n:AVERAGE
+DEF:used=<%RRD_FOR disk-usage-<?= $device ?>-used.gauge %>:n:AVERAGE
+CDEF:avail_b=avail,1000,*
+CDEF:used_b=used,1000,*
+CDEF:total=avail_b,used_b,+
+VDEF:slope=used_b,LSLSLOPE
+VDEF:cons=used_b,LSLINT
+CDEF:lsl2=used_b,POP,slope,COUNT,*,cons,+
+AREA:total#ff99ff:Total
+GPRINT:total:LAST:Cur\:%4.2lf%sB
+AREA:used_b#cc00ff:Used 
+GPRINT:used_b:LAST:Cur\:%4.2lf%sB\l
 LINE1:lsl2#00A000:Prediction:dashes=3,6
