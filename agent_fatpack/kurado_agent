@@ -9,6 +9,20 @@ $fatpacked{"Cwd/Guard.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'CWD_G
   package Cwd::Guard;use strict;use warnings;use parent 'Exporter';our@EXPORT_OK=qw/cwd_guard/;our$Error;our$VERSION='0.04';use constant USE_FCHDIR=>eval {opendir my$dh,'.';chdir$dh;1};use if!USE_FCHDIR,Cwd=>qw/getcwd/;sub cwd_guard {my$dir=shift;__PACKAGE__->new($dir)}sub new {my$class=shift;my$dir=shift;my$cwd;if (USE_FCHDIR){opendir$cwd,'.'}else {$cwd=getcwd()}my$callback=sub {chdir$cwd};my$result=defined$dir ? chdir($dir): chdir();$Error=$!;return unless$result;bless$callback,$class}sub DESTROY {$_[0]->()}1;
 CWD_GUARD
 
+$fatpacked{"Kurado.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO';
+  package Kurado;
+  
+  use 5.10.0;
+  use strict;
+  use warnings;
+  
+  our $VERSION = '0.01';
+  
+  1;
+  
+  
+KURADO
+
 $fatpacked{"Kurado/Agent.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_AGENT';
   package Kurado::Agent;
   
@@ -111,7 +125,6 @@ $fatpacked{"Kurado/Agent/Collector.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
           'Cached'    => 'memory-cached.gauge',
           'SwapTotal' => 'memory-swap-total.gauge',
           'SwapFree'  => 'memory-swap-free.gauge',
-          'Inactive'  => 'memory-inactive.gauge',
       );
   
       open my $fh, '<:utf8', '/proc/meminfo' or die "$!\n";
@@ -129,9 +142,12 @@ $fatpacked{"Kurado/Agent/Collector.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
           $metrics->{$MEMORY_ITEM{$k}} = int( defined $meminfo{$k} ? $meminfo{$k} :  0);
       }
   
-      $metrics->{'memory-used.gauge'} = 
-          $metrics->{'memory-total.gauge'} - $metrics->{'memory-free.gauge'} - $metrics->{'memory-inactive.gauge'};
+      $metrics->{'memory-used.gauge'} = $metrics->{'memory-total.gauge'}
+          - $metrics->{'memory-free.gauge'}
+          - $metrics->{'memory-buffers.gauge'}
+          - $metrics->{'memory-cached.gauge'};
       $metrics->{'memory-swap-used.gauge'} = $metrics->{'memory-swap-total.gauge'} - $metrics->{'memory-swap-free.gauge'};
+      delete $metrics->{'memory-swap-free.gauge'}
   }
   
   
@@ -288,7 +304,7 @@ $fatpacked{"Kurado/Agent/Collector.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
           $self->metrics->{"disk-io-".$device."-read-ios.derive"} = $dstats[0];
           $self->metrics->{"disk-io-".$device."-read-sectors.derive"} = $dstats[2];
           $self->metrics->{"disk-io-".$device."-write-ios.derive"} = $dstats[4];
-          $self->metrics->{"disk-io-".$device."-write-sectors.device"} = $dstats[6];
+          $self->metrics->{"disk-io-".$device."-write-sectors.derive"} = $dstats[6];
       }
       $self->meta->{"disk-io-devices"} = join ",", @devices if @devices;
   }
@@ -561,6 +577,607 @@ $fatpacked{"Kurado/Agent/TOML.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".
   1;
 KURADO_AGENT_TOML
 
+$fatpacked{"Kurado/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_CONFIG';
+  package Kurado::Config;
+  
+  use strict;
+  use warnings;
+  use Mouse;
+  use Mouse::Util::TypeConstraints;
+  use File::Basename;
+  
+  subtype 'Natural'
+      => as 'Int'
+      => where { $_ > 0 };
+  
+  subtype 'Uint'
+      => as 'Int'
+      => where { $_ >= 0 };
+  
+  subtype 'Flag'
+      => as 'Int'
+      => where { $_ <= 1 };
+  
+  no Mouse::Util::TypeConstraints;
+  
+  sub load {
+      my ($class,$ref,$path) = @_;
+      $ref->{_path} = $path;
+      __PACKAGE__->new($ref);
+  }
+  
+  # path
+  
+  has '_path' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  # config
+  
+  has 'redis' => (
+      is => 'ro',
+      isa => 'Str',
+      default => '127.0.0.1:6379',
+  );
+  
+  has 'data_dir' => (
+      is => 'ro',
+      isa => 'Str',
+      default => 'data',
+  );
+  
+  has 'rolls_dir' => (
+      is => 'ro',
+      isa => 'Str',
+      default => 'sample_rolls',
+  );
+  
+  has 'metrics_plugin_dir' => (
+      is => 'ro',
+      isa => 'ArrayRef[Str]',
+      default => 'sub { [qw/metrics_plugins metrics_site_plugins/] }',
+  );
+  
+  # worker process numbers
+  
+  has 'web_worker' => (
+      is => 'ro',
+      isa => 'Natural',
+      default => 5,
+  );
+  
+  has 'update_worker' => (
+      is => 'ro',
+      isa => 'Natural',
+      default => 2,
+  );
+  
+  has 'fetch_worker' => (
+      is => 'ro',
+      isa => 'Natural',
+      default => 2,
+  );
+  
+  
+  #rel2abs
+  
+  around ['data_dir','rolls_dir'] => sub {
+      my $orig = shift;
+      my $self = shift;
+      my $dir = @_ ? $self->$orig(@_) : $self->$orig();
+      File::Spec->rel2abs($dir, File::Basename::dirname($self->_path) );
+  };
+  
+  around 'metrics_plugin_dir' => sub {
+      my $orig = shift;
+      my $self = shift;
+      my $dirs = @_ ? $self->$orig(@_) : $self->$orig();
+      [ map { File::Spec->rel2abs($_, File::Basename::dirname($self->_path)) } @$dirs ];
+  };
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  sub dump {
+      my $self = shift;
+      my %dump;
+      $dump{$_} = $self->$_ for qw/_path redis data_dir rolls_dir metrics_plugin_dir web_worker update_worker fetch_worker/;
+      return \%dump;
+  }
+  
+  
+  1;
+  
+KURADO_CONFIG
+
+$fatpacked{"Kurado/ConfigLoader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_CONFIGLOADER';
+  package Kurado::ConfigLoader;
+  
+  use strict;
+  use warnings;
+  use utf8;
+  use YAML::XS qw//;
+  use JSON::XS;
+  use File::Spec;
+  use Mouse;
+  use Unicode::EastAsianWidth;
+  
+  use Kurado::Config;
+  use Kurado::Object::Host;
+  use Kurado::Object::Roll;
+  use Kurado::Object::Plugin;
+  use Kurado::Plugin::Compile;
+  
+  has 'path' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  
+  sub yaml_head {
+      my $ref = shift;
+      my $dump = YAML::XS::Dump($ref);
+      chomp($dump);
+      my @dump = split /\n/, $dump;
+      join("\n", map { "> $_"} splice(@dump,0,8), (@dump > 8 ? "..." : ""))."\n";
+  }
+  
+  sub BUILD {
+      my ($self) = @_;
+      $self->{_roll_cache} = {};
+      $self->{load_plugins} = {};
+      $self->{service_hosts} = {};
+      $self->parse_file();
+  }
+  
+  sub parse_file {
+      my ($self) = @_;
+      my $path = $self->{path};
+      my @configs = eval {
+          YAML::XS::LoadFile($path);
+      };
+      die "Failed to load $path: $@" if $@;
+      
+      for ( @configs ) {
+          if ( ! ref $_ || ref $_ ne "HASH" ) {
+              die "config shuold be HASH(or dictionary):\n" . yaml_head($_); 
+          }
+      }
+  
+      my $main_config = shift @configs;
+      $self->parse_main_config($main_config);
+  
+      $self->{services} = {};
+      for my $service_config ( @configs ) {
+          $self->parse_service_config($service_config);
+      }
+  }
+  
+  sub parse_main_config {
+      my ($self, $config) = @_;
+  
+      my $main_config = $config->{config};
+      die "There is no 'config' in:\n".yaml_head($config) unless $main_config;
+      eval {
+          $self->{config} = Kurado::Config->load($main_config, $self->{path});
+      };
+      die "failed to config: $@\n===\n".yaml_head($config) if $@;
+  
+      $self->{metrics_config} = $config->{metrics_config};
+      $self->{metrics_config} ||= {};
+      die "metrics_config should be HASH(or dictionary)\n".yaml_head($self->{metrics_config})
+          if ! ref $self->{metrics_config} || ! ref $self->{metrics_config} eq 'HASH';
+  }
+  
+  sub parse_service_config {
+      my ($self,$config) = @_;
+      my $service = $config->{service};
+      die "There is no 'service' in:\n".yaml_head($config) unless $service;
+      die "found duplicated service '$service'".yaml_head($config) if exists $self->{services}->{$service};
+      my $servers_config = $config->{servers};
+      $servers_config ||= [];
+      die "metrics_config should be Array\n".yaml_head($servers_config)
+          if ! ref $servers_config || ! ref $servers_config eq 'ARRAY';
+      my @sections;
+      my %labels;
+      for my $server_config ( @$servers_config ) {
+          my $roll = $server_config->{roll}
+              or die "cannot find roll in service:$service servers:".yaml_head($server_config);
+          my $hosts = $server_config->{hosts} || [];
+          my $label = $server_config->{label} // '';
+  
+          # lebel の2重チェック
+          if ( $label ) {
+              die "found duplicated label '$label'".yaml_head($config) if exists $labels{$label};
+          }
+  
+          my @hosts;
+          for my $host_line ( @$hosts ) {
+              my $host = eval {
+                  $self->parse_host( $host_line, $roll, $service );
+              };
+              die "$@".yaml_head($config) if $@;
+              $self->{service_hosts}{$service}++;
+              push @hosts, $host;
+          }
+          
+          if ( @sections && !$label ) {
+              push @{$sections[-1]->{hosts}}, @hosts;
+              next;
+          }
+  
+          push @sections, {
+              label => $label,
+              hosts => \@hosts,
+          };
+          $labels{$label} = 1;
+      }
+  
+      $self->{services}->{$service} = \@sections;
+  }
+  
+  sub parse_host {
+      my ($self, $line, $roll_name, $service) = @_;
+  
+      my ( $address, $hostname, $comments )  = split /\s+/, $line, 3;
+      die "cannot find address in '$line'\n" unless $address;
+      $hostname //= $address;
+      $comments //= "";
+      die "duplicated host entry address $address in '$line'\n" if exists $self->{hosts}{$address};
+  
+      my $roll = $self->load_roll( $roll_name );
+      $self->{hosts}{$address} =  Kurado::Object::Host->new(
+          address => $address,
+          hostname => $hostname,
+          comments => $comments,
+          roll => $roll_name,
+          metrics_config => $roll->metrics_config,
+          plugins => $roll->plugins,
+          service => $service
+      );
+      $self->{hosts}{$address};
+  }
+  
+  sub load_roll {
+      my ($self, $roll_name) = @_;
+      # cache
+      return $self->{_roll_cache}{$roll_name} if $self->{_roll_cache}{$roll_name};
+      my $path = File::Spec->catfile($self->config->rolls_dir, $roll_name);
+      my ($roll_config) = eval {
+          YAML::XS::LoadFile($path);
+      };
+      die "Failed to load roll $path: $@" if $@;
+      if ( ! ref $roll_config || ref $roll_config ne "HASH" ) {
+          die "roll config shuold be HASH(or dictionary):\n" . yaml_head($roll_config); 
+      }
+      my $metrics_config = $self->merge_metrics_config($roll_config->{metrics_config} || {});
+      my @plugins;
+      for ( @{$roll_config->{metrics} || []} ) {
+          push @plugins, $self->parse_plugin($_);
+      }    
+      
+      $self->{_roll_cache}{$roll_name} = Kurado::Object::Roll->new(
+          metrics_config => $metrics_config,
+          plugins => \@plugins
+      );    
+      $self->{_roll_cache}{$roll_name};
+  }
+  
+  sub parse_plugin {
+      my ($self, $line) = @_;
+      my ( $plugin, @arguments )  = split /:/, $line;
+      die "cannot find plugin name: in '$line'\n" unless $plugin;
+  
+      # compile plugin
+      my $pc = Kurado::Plugin::Compile->new(config=>$self->config);
+      my @loaded_plugins;
+      for my $type (qw/view fetch/) {
+          my $compiled = eval {
+              $pc->compile(
+                  plugin => $plugin,
+                  type => $type,
+              );
+          };
+          die "failed load plugin plugin:$plugin,type:$type $@\n" if $@;
+          push @loaded_plugins, $type if $compiled;
+      }
+      die "Could not find plugin '$plugin'\n" if @loaded_plugins == 0;
+      $self->{load_plugins}{$plugin} = \@loaded_plugins;
+      return Kurado::Object::Plugin->new(
+          plugin => $plugin,
+          arguments => \@arguments,
+      );
+  }
+  
+  sub config {
+      $_[0]->{config};
+  }
+  
+  sub metrics_config {
+      $_[0]->{metrics_config};
+  }
+  
+  my $_JSON = JSON::XS->new->utf8;
+  sub merge_metrics_config {
+      my ($self,$ref) = @_;
+      $_JSON->decode($_JSON->encode({
+          %{$self->{metrics_config}},
+          %$ref
+      }));
+  }
+  
+  sub services {
+      $_[0]->{services};
+  }
+  
+  sub sorted_services {
+      my $self = shift;
+      [
+          map {{
+              service => $_,
+              sections => $self->services->{$_},
+              host_num => $self->{service_hosts}{$_},
+          }} sort { lc($a) cmp lc($b) } keys %{$self->services}
+      ];
+  }
+  
+  sub host_by_address {
+      my ($self,$address) = @_;
+      return unless exists $self->{hosts}{$address};
+      $self->{hosts}{$address};
+  }
+  
+  sub plugins {
+      my $self = shift;
+      [ keys %{$self->{load_plugins}} ];
+  }
+  
+  sub dump {
+      my $self = shift;
+      +{
+          config => $self->config->dump,
+          metrics_config => $self->metrics_config,
+          services => $self->sorted_services,
+      }
+  }
+  
+  sub zlength {
+      my $str = shift;
+      my $width = 0;
+      while ($str =~ m/(?:(\p{InFullwidth}+)|(\p{InHalfwidth}+))/go) {
+          $width += ($1 ? length($1) * 2 : length($2));
+      }
+      $width;
+  }
+  
+  sub statistics {
+      my $self = shift;
+      $self->sorted_services;
+      my ($maxlen) = sort { $b <=> $a } map { zlength($_) } keys %{$self->services};
+  
+      $maxlen += 2;
+      $maxlen = 50 if $maxlen < 50;
+      my $body = "# REGISTERED HOSTS\n";
+      $body .= "-". "-"x$maxlen . "+" ."-------\n";
+      $body .= " SERVICE" . (" "x($maxlen-7)) . "| HOSTS \n";
+      $body .= "-". "-"x$maxlen . "+" ."-------\n";
+      for my $service (@{$self->sorted_services}) {
+          $body .= " " . $service->{service} . (" "x($maxlen - zlength($service->{service}))) . '| ' . sprintf('% 5d',$service->{host_num}) . " \n"
+      }
+      $body .= "-"."-"x$maxlen . "+" ."-------\n";
+  
+      $body .= "\n# LOADED PLUGINS\n";
+  
+      $body .= " PLUGIN" . (" "x($maxlen-6)) . "|  TYPE \n";
+      $body .= "-". "-"x$maxlen . "+" ."-------\n";
+      for my $load_plugin (keys %{$self->{load_plugins}}) {
+          for my $type ( @{$self->{load_plugins}{$load_plugin}} ) {
+          $body .= " "
+              . $load_plugin
+              . (" "x($maxlen - zlength($load_plugin)))
+              . '| '
+              . sprintf('% 5s',$type) . " \n"
+          }
+      }
+      $body .= "-"."-"x$maxlen . "+" ."-------\n";
+  
+      return "$body\n";
+  }
+  
+  1;
+  
+KURADO_CONFIGLOADER
+
+$fatpacked{"Kurado/Host.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_HOST';
+  package Kurado::Host;
+  
+  use strict;
+  use warnings;
+  use utf8;
+  use 5.10.0;
+  use Mouse;
+  use Log::Minimal;
+  use Data::Validator;
+  
+  use Kurado::Plugin::Compile;
+  use Kurado::Storage;
+  use Kurado::RRD;
+  
+  has 'config' => (
+      is => 'ro',
+      isa => 'Kurado::Config',
+      required => 1
+  );
+  
+  has 'host' => (
+      is => 'ro',
+      isa => 'Kurado::Object::Host',
+      required => 1
+  );
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  sub plugins {
+      my $self = shift;
+      $self->host->plugins;
+  }
+  
+  sub address {
+      my $self = shift;
+      $self->host->address;
+  }
+  
+  sub hostname {
+      my $self = shift;
+      $self->host->hostname;
+  }
+  
+  sub service {
+      my $self = shift;
+      $self->host->service;
+  }
+  
+  sub comments {
+      my $self = shift;
+      $self->host->comments;
+  }
+  
+  sub compile {
+      my $self = shift;
+      $self->{compile} ||= Kurado::Plugin::Compile->new(config=>$self->config);
+  }
+  
+  sub storage {
+      my $self = shift;
+      $self->{storage} ||= Kurado::Storage->new(redis=>$self->config->redis);
+  }
+  
+  sub metrics_list {
+      my $self = shift;
+  
+      my @list;
+      for my $plugin (@{$self->plugins}) {
+          my $warn = $self->storage->get_warn_by_plugin(
+              plugin => $plugin,
+              address => $self->address,
+          );
+  
+          #run list
+          my $metrics = eval {
+              my ($stdout, $stderr, $success) = $self->compile->run(
+                  host => $self->host,
+                  plugin => $plugin,
+                  type => 'view',
+              );
+              die "$stderr\n" unless $success;
+              $self->parse_metrics_list($stdout);
+          };
+          if ( $@ ) {
+              $warn->{_exec_plugin_} = $@;
+          }
+          push @list, {
+              plugin => $plugin,
+              warn => $warn,
+              metrics => $metrics
+          };
+      }
+      \@list;
+  }
+  
+  # #       uptime  up 0 days,  8:56
+  # # Traffic(eth0)
+  # traffic-eth0
+  # # CPU Memory
+  # cpu
+  # load-avg
+  # memory-usage
+  # tcp-established
+  # # Disk Usage(/)
+  # disk-usage-mapper_VolGroup-lv_root
+  # # Disk Usage(mapper_VolGroup-lv_root)
+  # disk-io-mapper_VolGroup-lv_root
+  
+  sub parse_metrics_list {
+      my $self = shift;
+      my $list = shift;
+      my @metrics;
+      for my $line ( split /\n/, $list ) {
+          next unless $line;
+          if ( $line =~ m/^#/ ) {
+              $line =~ s!^# *!!g;
+              $line =~ s! *$!!g;
+              my ($label, @args) = split /\t/,$line;
+              die "odd number of metrics_list meta in '# $line'" if @args % 2;
+              my %meta = @args;
+              # label
+              push @metrics, {
+                  graphs => [],
+                  label => $label,
+                  meta => \%meta
+              };
+          }
+          else {
+              $line =~ s!^ *!!g;
+              $line =~ s! *$!!g;
+              if (!@metrics) {
+                  push @metrics, {
+                      graphs => [$line],
+                      label => "",
+                      meta => {},
+                  };
+              }
+              else {
+                  push @{$metrics[-1]{graphs}}, $line;
+              }
+          }
+      }
+      return \@metrics;
+  }
+  
+  sub metrics_graph {
+      state $rule = Data::Validator->new(
+          graph => 'Str',
+          plugin => 'Kurado::Object::Plugin',
+          term => 'Str',
+          from => 'Str',
+          to => 'Str',
+          width => 'Str'
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+      my ($img,$data);
+      eval {
+          my ($stdout, $stderr, $success) = $self->compile->run(
+              host => $self->host,
+              plugin => $args->{plugin},
+              type => 'view',
+              graph => $args->{graph},
+          );
+          die "$stderr\n" unless $success;
+          my $rrd = Kurado::RRD->new(data_dir => $self->config->data_dir);        
+          ($img,$data) = $rrd->graph(
+              def => $stdout,
+              host => $self->host,
+              plugin => $args->{plugin},
+              term => $args->{term},
+              from => $args->{from},
+              to => $args->{to},
+              width => $args->{width},
+          );
+      };
+      die sprintf('address:%s plugin:%s graph:%s: %s'."\n",$self->host->address, $args->{plugin}->plugin, $args->{graph}, $@) if $@;
+      return ($img,$data);
+  }
+  
+  
+  1;
+  
+  
+KURADO_HOST
+
 $fatpacked{"Kurado/MQ.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_MQ';
   package Kurado::MQ;
   
@@ -579,7 +1196,7 @@ $fatpacked{"Kurado/MQ.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURAD
       my %args = ref $_ ? %{$_[0]} : @_;
       %args = (
           server => '127.0.0.1:6379',
-          keep_alive_timer => 30,
+          keep_alive_timer => 180,
           timeout => 10,
           %args,
       );
@@ -917,6 +1534,1172 @@ $fatpacked{"Kurado/MQ.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURAD
   
 KURADO_MQ
 
+$fatpacked{"Kurado/Metrics.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_METRICS';
+  package Kurado::Metrics;
+  
+  use strict;
+  use warnings;
+  use Mouse;
+  use Log::Minimal;
+  use URI::Escape;
+  
+  use Kurado::RRD;
+  use Kurado::Storage;
+  use Kurado::Object::Msg;
+  
+  has 'config' => (
+      is => 'ro',
+      isa => 'Kurado::Config',
+      required => 1
+  );
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  sub process_message {
+      my ($self,$message) = @_;
+      my $rrd = Kurado::RRD->new(data_dir=>$self->config->data_dir);
+      my $storage = Kurado::Storage->new(redis=>$self->config->redis);
+      foreach my $line ( split /\n/, $message ) {
+          chomp $line;
+          my $msg = eval {
+              $self->parse_metrics_line($line);
+          };
+          if ($@) {
+              warnf("'$line' has error '$@'. ignore it");
+              next;
+          }
+          if ( $msg->metrics_type eq 'metrics' ) {
+              # rrd update
+              #debugf("rrd update %s",$msg);
+              eval {
+                  $rrd->update(msg=>$msg);
+              };
+              critf('failed update rrd %s : %s', $msg, $@) if $@;
+          }
+          elsif ( $msg->metrics_type eq 'meta' ) {
+              # update storage
+              $storage->set(
+                  msg => $msg,
+                  expires => 60*60
+              );
+          }
+          elsif ( $msg->metrics_type eq 'warn' ) {
+              # update storage
+              $storage->set_warn(msg => $msg);
+          }
+      }
+      
+  }
+  
+  sub parse_metrics_line {
+      my ($self, $line) = @_;
+      my @msg = split /\t/, $line;
+      if ( @msg != 4 ) {
+          die "msg does not have 4 column. ignore it\n";
+      }
+      my ($address, $key, $value, $timestamp) = @msg;
+  
+      # base.metrics.tcp-established.gauge
+      # base.meta.traffic-interfaces
+      # base.warn.traffic-interfaces
+  
+      my ($plugin, $type, $metrics_key) = split /\./, $key, 3;
+      if ( !$type || !$metrics_key ) {
+          die "key does not contains two dot\n";
+      }
+  
+      if ( $type !~ m!^(?:metrics|meta|warn)$! ) {
+          die "invalid metrics-type\n";
+      }
+  
+      if ( $type eq 'metrics' && $metrics_key !~ m!\.(?:gauge|counter|derive|absolute)$! ) {
+          die "invalid rrd data type\n";
+      }
+      
+      my $obj_plugin = Kurado::Object::Plugin->new_from_identifier($plugin);
+      return Kurado::Object::Msg->new(
+          address => $address,
+          plugin => $obj_plugin,
+          metrics_type => $type,
+          key => $metrics_key,
+          value => $value,
+          timestamp => $timestamp
+      );
+  }
+  
+  1;
+  
+KURADO_METRICS
+
+$fatpacked{"Kurado/Object/Host.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_OBJECT_HOST';
+  package Kurado::Object::Host;
+  
+  use strict;
+  use warnings;
+  use 5.10.0;
+  use Mouse;
+  use JSON::XS;
+  
+  has 'address' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  has 'hostname' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  has 'comments' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  has 'roll' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  has 'metrics_config' => (
+      is => 'ro',
+      isa => 'HashRef[Any]',
+      required => 1
+  );
+  
+  has 'plugins' => (
+      is => 'ro',
+      isa => 'ArrayRef[Kurado::Object::Plugin]',
+      required => 1
+  );
+  
+  has 'service' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  sub TO_JSON {
+      my $self = shift;
+      +{map { ($_ => $self->$_) } qw/address hostname comments roll metrics_config plugins/};
+  }
+  
+  1;
+  
+KURADO_OBJECT_HOST
+
+$fatpacked{"Kurado/Object/Msg.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_OBJECT_MSG';
+  package Kurado::Object::Msg;
+  
+  use strict;
+  use warnings;
+  use utf8;
+  use 5.10.0;
+  use Mouse;
+  
+  has 'plugin' => (
+      is => 'ro',
+      isa => 'Kurado::Object::Plugin',
+      required => 1
+  );
+  
+  has 'address' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  has 'metrics_type' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  has 'key' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  has 'value' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  has 'timestamp' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  
+  1;
+  
+  
+KURADO_OBJECT_MSG
+
+$fatpacked{"Kurado/Object/Plugin.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_OBJECT_PLUGIN';
+  package Kurado::Object::Plugin;
+  
+  use strict;
+  use warnings;
+  use utf8;
+  use 5.10.0;
+  use Mouse;
+  use JSON::XS;
+  use URI::Escape;
+  
+  has 'plugin' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  has 'arguments' => (
+      is => 'ro',
+      isa => 'ArrayRef[Str]',
+      required => 1
+  );
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  sub new_from_identifier {
+      my $class = shift;
+      my $identifier = shift;
+      my ($plugin, @args) = split /:/, $identifier;
+      $class->new(
+          plugin => $plugin,
+          arguments => \@args,
+      );
+  }
+  
+  sub plugin_identifier {
+      my $self = shift;
+      my $str = $self->plugin . ((@{$self->arguments}) ? ':'.join(":",@{$self->arguments}) : '');
+      $str;
+  }
+  
+  sub plugin_identifier_escaped {
+      my $self = shift;
+      uri_escape($self->plugin_identifier, "^A-Za-z0-9\-_"); #escape dot
+  }
+  
+  sub TO_JSON {
+      my $self = shift;
+      +{map { ($_ => $self->$_) } qw/plugin arguments/};
+  }
+  
+  1;
+  
+  
+KURADO_OBJECT_PLUGIN
+
+$fatpacked{"Kurado/Object/Roll.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_OBJECT_ROLL';
+  package Kurado::Object::Roll;
+  
+  use strict;
+  use warnings;
+  use 5.10.0;
+  use Mouse;
+  use JSON::XS;
+  
+  has 'metrics_config' => (
+      is => 'ro',
+      isa => 'HashRef[Any]',
+      required => 1
+  );
+  
+  has 'plugins' => (
+      is => 'ro',
+      isa => 'ArrayRef[Kurado::Object::Plugin]',
+      required => 1
+  );
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  sub TO_JSON {
+      my $self = shift;
+      +{map { ($_ => $self->$_) } qw/metrics_config plugins/};
+  }
+  
+  
+  1;
+  
+KURADO_OBJECT_ROLL
+
+$fatpacked{"Kurado/Plugin.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_PLUGIN';
+  package Kurado::Plugin;
+  
+  use strict;
+  use warnings;
+  use utf8;
+  use 5.10.0;
+  use Getopt::Long;
+  use Pod::Usage;
+  use JSON::XS;
+  use Text::MicroTemplate::DataSectionEx;
+  
+  my $_JSON = JSON::XS->new->utf8;
+  
+  our %BRIDGE = ();
+  
+  sub new {
+      my $class = shift;
+      my @args = @_;
+      my @caller = caller;
+      # ($package, $filename, $line) = caller;
+      my $self = bless {
+          caller => \@caller,
+          args => \@args,
+      }, $class;
+      $self->parse_options();
+      $self;
+  }
+  
+  sub parse_options {
+      my $self = shift;
+      local @ARGV = @{$self->{args}};
+  
+      my $parser = Getopt::Long::Parser->new(
+          config => [ "no_auto_abbrev", "no_ignore_case", "pass_through" ],
+      );
+  
+      $parser->getoptions(
+          "address=s"          => \$self->{address},
+          "hostname=s"         => \$self->{hostname},
+          "comments=s"         => \my @comments,
+          "plugin-arguments=s" => \my @plugin_arguments,
+          "graph=s"            => \$self->{graph},
+          "h|help"             => \my $help,
+          "v|version"          => \my $version,
+          "metrics-config-json=s" => \$self->{metrics_config_json},
+          "metrics-meta-json=s"   => \$self->{metrics_meta_json},
+      );
+  
+      my $plugin_version = eval '$'.$self->{caller}->[0]."::VERSION";
+      $plugin_version //= 'unknown';
+  
+      if ( $version ) {
+          print "display/base.pl version $plugin_version\n";
+          print "Try `$self->{caller}[1] --help` for more options.\n\n";
+          exit 0;
+      }
+  
+      if ( $help ) {
+          pod2usage({
+              -verbose => 99,
+              -exitval => 'noexit',
+              -output => *STDOUT,
+          });
+          exit(0);
+      }
+      if ( !$self->{address} || !$self->{hostname} ) {
+          pod2usage({
+              -msg => 'ERR: address and hostname are required',
+              -verbose => 1,
+              -exitval => 'noexit',
+              -output => *STDERR,
+          });
+          exit(2);
+      }
+  
+      $self->{comments} = \@comments;
+      $self->{plugin_arguments} = \@plugin_arguments;
+  }
+  
+  sub address {
+      $_[0]->{address};
+  }
+  
+  sub hostname {
+      $_[0]->{hostname};
+  }
+  
+  sub comments {
+      $_[0]->{comments};
+  }
+  
+  sub plugin_arguments {
+      $_[0]->{plugin_arguments};
+  }
+  
+  sub graph {
+      $_[0]->{graph};
+  }
+  
+  use Log::Minimal;
+  
+  sub meta_config {
+      my ($self,$key) = @_;
+  
+      return $self->{$key} if $self->{$key};
+      if ( $self->{"${key}_json"} ) {
+          if ( $self->{"${key}_json"} =~ m!^{! ) {
+              $self->{$key} = eval { $_JSON->decode($self->{"${key}_json"}) };
+              die $@ if $@;
+          }
+          else {
+              $self->{$key} = eval {
+                  open(my $fh, '<', $self->{"${key}_json"}) or die $!;
+                  my $json_text = do { local $/; <$fh> };
+                  $_JSON->decode($json_text)
+              };
+              die $@ if $@;
+          }
+      }
+      elsif ( $BRIDGE{"kurado.${key}"} && ref $BRIDGE{"kurado.${key}"}) {
+          $self->{$key} = $BRIDGE{"kurado.${key}"};
+      }
+      elsif ( exists $ENV{"kurado.${key}_json"} ) {
+          $self->{$key} = eval { $_JSON->decode($ENV{"kurado.${key}_json"}) };
+          die $@ if $@;
+      }
+      else {
+          $self->{$key} = {};
+      }
+      $self->{$key}
+  }
+  
+  sub metrics_config {
+      my $self = shift;
+      $self->meta_config('metrics_config');
+  }
+  
+  sub metrics_meta {
+      my $self = shift;
+      $self->meta_config('metrics_meta');
+  }
+  
+  sub uptime2str {
+      my $self = shift;
+      my $uptime = shift;
+      my $day = int( $uptime /86400 );
+      my $hour = int( ( $uptime % 86400 ) / 3600 );
+      my $min = int( ( ( $uptime % 86400 ) % 3600) / 60 );
+      sprintf("up %d days, %2d:%02d", $day, $hour, $min);
+  }
+  
+  sub render {
+      my $self = shift;
+      my $template = shift;
+      my $args = defined $_[0] && ref $_[0] ? $_[0] : { @_ };
+      my $mt = Text::MicroTemplate::DataSectionEx->new(
+          extension => "",
+          package => $self->{caller}->[0],
+          template_args => $args,
+      );
+      $mt->render($template);
+  }
+  
+  1;
+  
+  
+  
+KURADO_PLUGIN
+
+$fatpacked{"Kurado/Plugin/Compile.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_PLUGIN_COMPILE';
+  package Kurado::Plugin::Compile;
+  
+  use strict;
+  use warnings;
+  use utf8;
+  use 5.10.0;
+  use Mouse;
+  use Log::Minimal;
+  use Data::Validator;
+  use File::Spec;
+  use File::Basename;
+  use Cwd::Guard;
+  use POSIX 'SEEK_SET';
+  use SelectSaver;
+  use JSON::XS;
+  use Capture::Tiny;
+  
+  use Kurado::Storage;
+  
+  my $_JSON = JSON::XS->new->utf8;
+  
+  has 'config' => (
+      is => 'ro',
+      isa => 'Kurado::Config',
+      required => 1
+  );
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  our $RETURN_EXIT_VAL = undef;
+  our $USE_REAL_EXIT;
+  BEGIN {
+      $USE_REAL_EXIT = 1;
+  
+      my $orig = *CORE::GLOBAL::exit{CODE};
+  
+      my $proto = $orig ? prototype $orig : prototype 'CORE::exit';
+  
+      $proto = $proto ? "($proto)" : '';
+  
+      $orig ||= sub {
+          my $exit_code = shift;
+  
+          CORE::exit(defined $exit_code ? $exit_code : 0);
+      };
+  
+      no warnings 'redefine';
+  
+      *CORE::GLOBAL::exit = eval qq{
+          sub $proto {
+              my \$exit_code = shift;
+  
+              \$orig->(\$exit_code) if \$USE_REAL_EXIT;
+  
+              die [ "EXIT\n", \$exit_code || 0 ]
+          };
+      };
+      die $@ if $@;
+  }
+  
+  # this helper function is placed at the top of the file to
+  # hide variables in this file from the generated sub.
+  sub _eval {
+      no strict;
+      no warnings;
+  
+      eval $_[0];
+  }
+  
+  my %COMPILE;
+  sub compile {
+      state $rule = Data::Validator->new(
+          plugin => 'Str',
+          type => 'Str',
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+      my $path = $self->find_plugin($args);
+  
+      return unless $path;
+  
+      return $COMPILE{$path} if $COMPILE{$path};
+  
+      infof "found plugin %s/%s at %s", $args->{type}, $args->{plugin}, $path;
+      my $dir = dirname $path;
+      my $package = $self->_build_package($path);
+      my $code = $self->_read_source($path);
+  
+      my $warnings = $code =~ /^#!.*\s-w\b/ ? 1 : 0;
+      $code =~ s/^__END__\r?\n.*//ms;
+      $code =~ s/^__DATA__\r?\n(.*)//ms;
+      my $data = $1;
+  
+          my $eval = join "\n",
+          "package $package;",
+          "sub {",
+          '  local $Kurado::Plugin::Compile::USE_REAL_EXIT = 0;',
+          '  local ($0, $Kurado::Plugin::Compile::_dir, *DATA);',
+          '  {',
+          '    my ($data, $path, $dir) = @_[0..2];',
+          '    $0 = $path;',
+          '    $Kurado::Plugin::Compile::_dir = Cwd::Guard::cwd_guard $dir;',
+         q!    open DATA, '<', \$data;!,   
+          '  }',
+          # NOTE: this is a workaround to fix a problem in Perl 5.10
+         q!  local @SIG{keys %SIG} = do { no warnings 'uninitialized'; @{[]} = values %SIG };!,
+          '  local $^W = $warnings;',
+          '  my $rv = eval {',
+          '    local @ARGV = @{ $_[3] };', # args to @ARGV
+          '    local @_    = @{ $_[3] };', # args to @_ as well
+          "    #line 1 $path",
+          "    $code",
+          '  };',
+          '  my $exit_code = 0;',
+          '  if ($@) {',
+          '    die "$@\n" unless (ref($@) eq "ARRAY" and $@->[0] eq "EXIT\n");', #no exit
+         q!    $exit_code = unpack('C', pack('C', sprintf('%.0f', $@->[1])));!, # ~128
+          '    die "exited nonzero: $exit_code" if $exit_code != 0;',
+          '  }',
+          '  return $exit_code;',
+          '};',"\n";
+  
+      my $sub = do {
+          no warnings 'uninitialized'; # for 5.8
+          # NOTE: this is a workaround to fix a problem in Perl 5.10
+          local @SIG{keys %SIG} = @{[]} = values %SIG;
+          local $USE_REAL_EXIT = 0;
+  
+          my $code = _eval $eval;
+          my $exception = $@;
+  
+          die "Could not compile $path: $exception\n" if $exception;
+  
+          sub {
+              my @args = @_;
+              $code->($data, $path, $dir, \@args)
+          };
+      };
+      infof "succeeded compiling plugin %s/%s", $args->{type}, $args->{plugin}, $path;
+      $COMPILE{$path} = $sub;
+      return $sub;
+  }
+  
+  sub jdclone {
+      my $ref = shift;
+      $_JSON->decode($_JSON->encode($ref));
+  }
+  
+  sub run {
+      state $rule = Data::Validator->new(
+          host => 'Kurado::Object::Host',
+          plugin => 'Kurado::Object::Plugin',
+          type => 'Str',
+          graph => { isa => 'Str', optional => 1 },
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+      
+      my $sub = $self->compile(
+          plugin => $args->{plugin}->plugin,
+          type => $args->{type},
+      );
+  
+      my $storage = Kurado::Storage->new( redis => $self->config->redis );
+      my $meta = $storage->get_by_plugin(
+          plugin => $args->{plugin},
+          address => $args->{host}->address,
+      );
+  
+      my @params = ();
+      push @params, '--address', $args->{host}->address;
+      push @params, '--hostname', $args->{host}->hostname;
+      push @params, '--comments', $args->{host}->comments if length $args->{host}->comments;
+      for my $p_a ( @{$args->{plugin}->arguments} ) {
+          push @params, '--plugin-arguments', $p_a;
+      }
+      push @params, '--graph', $args->{graph} if exists $args->{graph};
+  
+      my ($stdout, $stderr, $success) = Capture::Tiny::capture {
+          local $Kurado::Plugin::BRIDGE{'kurado.metrics_config'} = jdclone($args->{host}->metrics_config);
+          local $Kurado::Plugin::BRIDGE{'kurado.metrics_meta'} = jdclone($meta);
+          #local $ENV{'kurado.metrics_config_json'} = $_JSON->encode($args->{metrics_config});
+          #local $ENV{'kurado.metrics_meta_json'} = $_JSON->encode($meta);
+          eval {
+              $sub->(@params);
+          };
+          if ( $@ ) {
+              warn "$@\n";
+              return 0;
+          }
+          return 1;
+      };
+      return ($stdout, $stderr, $success);
+  }
+  
+  sub find_plugin {
+      state $rule = Data::Validator->new(
+          plugin => 'Str',
+          type => 'Str',
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+  
+      for my $dir ( @{$self->config->metrics_plugin_dir} ) {
+          my $path = File::Spec->catfile($dir,$args->{type},$args->{plugin}.'.pl');
+          if ( -f $path ) {
+              return $path;
+          }
+      }
+  
+      return;
+  }
+  
+  sub _read_source {
+      my($self, $file) = @_;
+  
+      open my $fh, "<", $file or die "$file: $!";
+      return do { local $/; <$fh> };
+  }
+  
+  sub _build_package {
+      my($self, $path) = @_;
+  
+      my ($volume, $dirs, $file) = File::Spec->splitpath($path);
+      my @dirs = File::Spec->splitdir($dirs);
+      my $package = join '_', grep { defined && length } $volume, @dirs, $file;
+  
+      # Escape everything into valid perl identifiers
+      $package =~ s/([^A-Za-z0-9_])/sprintf("_%2x", unpack("C", $1))/eg;
+  
+      # make sure that the sub-package doesn't start with a digit
+      $package =~ s/^(\d)/_$1/;
+  
+      $package = "Kurado::Plugin::Compile::ROOT" . "::$package";
+      return $package;
+  }
+  
+  1;
+  
+KURADO_PLUGIN_COMPILE
+
+$fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_RRD';
+  package Kurado::RRD;
+  
+  use strict;
+  use warnings;
+  use 5.10.0;
+  use Mouse;
+  use RRDs 1.4004;
+  use File::Spec;
+  use File::Basename;
+  use File::Path qw/make_path/;
+  use Data::Validator;
+  use URI::Escape;
+  use Log::Minimal;
+  
+  has 'data_dir' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  __PACKAGE__->meta->make_immutable();
+  
+  sub _create {
+      my ($self,$path) = @_;
+      return $path if -f $path;
+  
+      if ( $path !~ m!\.(gauge|counter|derive|absolute)\.rrd$! ) {
+          die "invalid path. not contains data type: $path\n";
+      }
+      my $dst = uc($1);
+  
+      my @param = (
+          '--start', time - 10,
+          '--step', '60',
+          "DS:n:${dst}:120:U:U",
+          'RRA:AVERAGE:0.5:1:2880',    #1分   1分    2日 2*24*60/(1*1) daily用
+          'RRA:AVERAGE:0.5:5:2880',   #5分   5分    10日 10*24*60/(5*1) weekly用
+          'RRA:AVERAGE:0.5:60:960',   #1時間  60分  40日 40*24*60/(60*1) monthly用
+          'RRA:AVERAGE:0.5:1440:1100', #24時間 1440分 1100日
+          'RRA:MIN:0.5:1:2880', 
+          'RRA:MIN:0.5:5:2880',
+          'RRA:MIN:0.5:60:960',
+          'RRA:MIN:0.5:1440:1100',
+          'RRA:MAX:0.5:1:2880', 
+          'RRA:MAX:0.5:5:2880',
+          'RRA:MAX:0.5:60:960',
+          'RRA:MAX:0.5:1440:1100',
+      );
+  
+      eval {
+          if ( ! -d dirname($path) ) {
+              make_path(dirname($path)) or die "make_path: $!\n";
+          }
+          RRDs::create($path, @param);
+          my $ERR=RRDs::error;
+          die "$ERR\n" if $ERR;
+      };
+      die "rrd create failed: $@\n" if $@;
+      return $path;
+  }
+  
+  sub update {
+      state $rule = Data::Validator->new(
+          msg => 'Kurado::Object::Msg'
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+  
+      my $path = File::Spec->catfile(
+          $self->data_dir,
+          $args->{msg}->address,
+          $args->{msg}->plugin->plugin_identifier_escaped,
+          uri_escape($args->{msg}->key) . '.rrd'
+      );
+  
+      $self->_create($path);
+  
+      my @param = (
+          '-t', 'n',
+          '--', join(':', $args->{msg}->timestamp, $args->{msg}->value)
+      );
+      eval {
+          RRDs::update($path, @param);
+          my $ERR=RRDs::error;
+          if ( $ERR && $ERR =~ /illegal attempt to update using time.*when last update time is.*minimum one second step/ ) {
+              warnf('failed update rrd %s%s: %s',$path,\@param, $ERR);
+          }
+          else {
+              die "$ERR\n" if $ERR;
+          }
+      };
+      die "rrd update failed: $@" if $@;
+      return 1;
+  }
+  
+  sub graph {
+      state $rule = Data::Validator->new(
+          def => 'Str',
+          host => 'Kurado::Object::Host',
+          plugin => 'Kurado::Object::Plugin',
+          term => 'Str',
+          from => 'Str',
+          to => 'Str',
+          width => 'Str',
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+  
+      my ($title,$def) = $self->parse_graph_def(
+          plugin => $args->{plugin},
+          host => $args->{host},
+          def => $args->{def},
+      );
+  
+      my $period_title;
+      my $period;
+      my $end = 'now';
+      my $xgrid;
+  
+      if ( $args->{term} eq 'custom' ) {
+          my $from_time = HTTP::Date::str2time($args->{from});  
+          die "invalid from date: $args->{from}\n" unless $from_time;
+          my $to_time = $args->{to} ? HTTP::Date::str2time($args->{to}) : time;
+          die "invalid to date: $args->{to}\n" unless $to_time;
+          die "from($args->{from}) is newer than to($args->{to})\n" if $from_time > $to_time;
+          $period_title = "$args->{from} to $args->{to}";
+          $period = $from_time;
+          $end = $to_time;
+          my $diff = $to_time - $from_time;
+          if ( $diff < 3 * 60 * 60 ) {
+              $xgrid = 'MINUTE:10:MINUTE:20:MINUTE:10:0:%M';
+          }
+          elsif ( $diff < 4 * 24 * 60 * 60 ) {
+              $xgrid = 'HOUR:6:DAY:1:HOUR:6:0:%H';
+          }
+          elsif ( $diff < 14 * 24 * 60 * 60) {
+              $xgrid = 'DAY:1:DAY:1:DAY:2:86400:%m/%d';
+          }
+          elsif ( $diff < 45 * 24 * 60 * 60) {
+              $xgrid = 'DAY:1:WEEK:1:WEEK:1:0:%F';
+          }
+          else {
+              $xgrid = 'WEEK:1:MONTH:1:MONTH:1:2592000:%b';
+          }
+      }
+      elsif ( $args->{term} eq 'year' ) {
+          $period_title = 'Year';
+          $period = -1 * 60 * 60 * 24 * 400;
+          $xgrid = 'WEEK:1:MONTH:1:MONTH:1:2592000:%b'
+      }
+      elsif ( $args->{term} eq 'month' ) {
+          $period_title = 'Month';
+          $period = -1 * 60 * 60 * 24 * 35;
+          $xgrid = 'DAY:1:WEEK:1:WEEK:1:604800:Week %W'
+      }
+      elsif ( $args->{term} eq 'week' ) {
+          $period_title = 'Week';
+          $period = -1 * 60 * 60 * 24 * 8;
+          $xgrid = 'DAY:1:DAY:1:DAY:1:86400:%a'
+      }
+      elsif ( $args->{term} eq 'day' ) {
+          $period_title = 'Day';
+          $period = -1 * 60 * 60 * 33; # 33 hours
+          $xgrid = 'HOUR:1:HOUR:2:HOUR:2:0:%H';
+      }
+      elsif ( $args->{term} eq '3days' ) {
+          $period_title = '3 Days';
+          $period = -1 * 60 * 60 * 24 * 3;
+          $xgrid = 'HOUR:6:DAY:1:HOUR:6:0:%H';
+      }
+      elsif ( $args->{term} eq '8hours' ) {
+          $period_title = '8 Hours';
+          $period = -1 * 8 * 60 * 60;
+          $xgrid = 'MINUTE:30:HOUR:1:HOUR:1:0:%H:%M';
+      }
+      elsif ( $args->{term} eq '4hours' ) {
+          $period_title = '4 Hours';
+          $period = -1 * 4 * 60 * 60;
+          $xgrid = 'MINUTE:30:HOUR:1:HOUR:1:0:%H:%M';
+      }
+      else {
+          $period_title = 'Hour';
+          $period = -1 * 60 * 60 * 2;
+          $xgrid = 'MINUTE:10:MINUTE:20:MINUTE:10:0:%M';
+      }
+  
+      $period_title = $period_title . ' ' . $args->{host}->hostname;
+      my ($tmpfh, $tmpfile) = File::Temp::tempfile(UNLINK => 0, SUFFIX => ".png");
+      my @opt = (
+          $tmpfile,
+          '-w', $args->{width},
+          '-h', 110,
+          '-l', 0, #minimum
+          '-u', 2, #maximum
+          '-x', $xgrid,
+          '-s', $period,
+          '-e', $end,
+          '-v', $title,
+          '--slope-mode',
+          '--disable-rrdtool-tag',
+          '--color', 'BACK#'.uc('313131'),
+          '--color', 'CANVAS#'.uc('313131'),
+          '--color', 'GRID#'.uc('686868'),
+          '--color', 'MGRID#'.uc('686868'),
+          '--color', 'FONT#'.uc('c8c8c8'),
+          '--color', 'FRAME#'.uc('686868'),
+          '--color', 'AXIS#'.uc('686868'),
+          '--color', 'SHADEA#'.uc('313131'),
+          '--color', 'SHADEB#'.uc('313131'),
+          '--border', 1,
+          '-t', $period_title,
+          '--font', "AXIS:8:",
+          '--font', "LEGEND:8:",
+          @$def,
+      );
+      my @graphv;
+      eval {
+          @graphv = RRDs::graph(map { Encode::encode_utf8($_) } @opt);
+          my $ERR=RRDs::error;
+          die $ERR if $ERR;
+      };
+      if ( $@ ) {
+          unlink($tmpfile);
+          die "draw graph failed: $@";
+      }
+  
+      open( my $fh, '<:bytes', $tmpfile ) or die "cannot open graph tmpfile: $!";
+      local $/;
+      my $graph_img = <$fh>;
+      unlink($tmpfile);
+  
+      die 'something wrong with image' unless $graph_img;
+  
+      return ($graph_img,\@graphv);
+  }
+  
+  sub parse_graph_def {
+      state $rule = Data::Validator->new(
+          def => 'Str',
+          host => 'Kurado::Object::Host',
+          plugin => 'Kurado::Object::Plugin',
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+  
+  # DEF:ind=<%RRD_FOR traffic-eth1-rxbytes.derive %>:n:AVERAGE
+  # DEF:outd=<%RRD_FOR traffic-eth1-txbytes.derive %>:n:AVERAGE
+  # CDEF:in=ind,0,1250000000,LIMIT,8,*
+  # CDEF:out=outd,0,1250000000,LIMIT,8,*
+  # AREA:in#00C000:Inbound  
+  # GPRINT:in:LAST:Cur\:%6.2lf%sbps
+  # GPRINT:in:AVERAGE:Ave\:%6.2lf%sbps
+  # GPRINT:in:MAX:Max\:%6.2lf%sbps\l
+  # LINE1:out#0000FF:Outbound 
+  # GPRINT:out:LAST:Cur\:%6.2lf%sbps
+  # GPRINT:out:AVERAGE:Ave\:%6.2lf%sbps
+  # GPRINT:out:MAX:Max\:%6.2lf%sbps\l
+      my $def = $args->{def};
+      $def =~ s!<%RRD_FOR\s+(.+?\.(?:gauge|counter|derive|absolute))\s+%>!&rrd_path_for($self,$args->{plugin},$args->{host},$1)!ge;
+      $def =~ s!<%RRD_EXTEND\s+(.+?) +(.+?) +(.+?\.(?:gauge|counter|derive|absolute))\s+%>!&rrd_path_extend($self,$1,$2,$3)!ge;
+      my @def = grep {$_} grep { $_ !~ m!^\s*#! } split /\n/,$def;
+      my $title = shift @def;
+      $title,\@def;
+  }
+  
+  
+  sub rrd_path_for {
+      my ($self, $plugin,$host,$key) = @_;
+      File::Spec->catfile(
+          $self->data_dir,
+          $host->address,
+          $plugin->plugin_identifier_escaped,
+          uri_escape($key) . '.rrd'
+      );
+  }
+  
+  sub rrd_path_extend {
+      my ($self, $plugin,$ip, $key) = @_;
+      File::Spec->catfile(
+          $self->data_dir,
+          $ip,
+          $plugin,
+          uri_escape($key) . '.rrd'
+      );
+      
+  }
+  
+  
+  1;
+  
+  
+KURADO_RRD
+
+$fatpacked{"Kurado/Storage.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_STORAGE';
+  package Kurado::Storage;
+  
+  use strict;
+  use warnings;
+  use utf8;
+  use 5.10.0;
+  use Mouse;
+  use Data::Validator;
+  use Redis::Fast;
+  use List::MoreUtils;
+  use Log::Minimal;
+  
+  has 'redis' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  my %REDIS_CONNECTION;
+  sub connect {
+      my $self = shift;
+      $REDIS_CONNECTION{"$$-".$self->redis} ||= Redis::Fast->new(
+          server => $self->redis,
+          reconnect => 10,
+          every => 100
+      );
+      $REDIS_CONNECTION{"$$-".$self->redis};
+  }
+  
+  sub set {
+      state $rule = Data::Validator->new(
+          msg => 'Kurado::Object::Msg',
+          expires => 'Str',
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+      $self->_set(
+          (map { ( $_ => $args->{$_} ) } qw/msg expires/),
+          type => 'storage',
+      );
+  }
+  
+  sub set_warn {
+      state $rule = Data::Validator->new(
+          msg => 'Kurado::Object::Msg'
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+  
+      my @lt = localtime($args->{msg}->{timestamp});
+      my $timestr = sprintf '%04d-%02d-%02dT%02d:%02d:%02d', $lt[5]+1900, $lt[4]+1, @lt[3,2,1,0];
+      $self->_set(
+          msg  => $args->{msg},
+          type => '__warn__',
+          expires => 5*60,
+          value => "$timestr ".$args->{msg}->value
+      );
+  }
+  
+  sub _set {
+      state $rule = Data::Validator->new(
+          msg => 'Kurado::Object::Msg',         
+          expires => 'Str',
+          type => 'Str',
+          value => { isa => 'Str', optional => 1},
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+   
+      my $set_key  = join "/", $args->{type},
+          $args->{msg}->address, $args->{msg}->plugin->plugin_identifier_escaped;
+      my $key = join "/", $args->{type}, 
+          $args->{msg}->address, $args->{msg}->plugin->plugin_identifier_escaped, $args->{msg}->key;
+      my $connect = $self->connect;
+  
+      my $expire_at = time + $args->{expires};
+      my $value = (exists $args->{value}) ? $args->{value} : $args->{msg}->value;
+      my @res;
+      $connect->multi(sub {});
+      $connect->zadd($set_key, $expire_at, $args->{msg}->key, sub {});
+      $connect->set($key, $value, sub {});
+      $connect->expireat($key, $expire_at, sub {});
+      $connect->exec(sub { @res = @_ });
+      $connect->wait_all_responses;
+      if ( my @err = grep { ! defined $_->[0] } @{$res[0]} ) {
+          die "Storage->set error: $err[0][1]\n";
+      }
+      return 1;
+  }
+  
+  sub delete {
+      state $rule = Data::Validator->new(
+          plugin => 'Kurado::Object::Plugin',
+          address => 'Str',
+          key => 'Str'
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+  
+      my $set_key  = join "/", 'storage',
+          $args->{address}, $args->{plugin}->plugin_identifier_escaped;
+      my $key = join "/", 'storage', 
+          $args->{address}, $args->{plugin}->plugin_identifier_escaped, $args->{key};
+  
+      my $connect = $self->connect;
+  
+      my @res;
+      $connect->multi(sub{});
+      $connect->zrem($set_key, $args->{key}, sub{});
+      $connect->del($key, sub{});
+      $connect->exec(sub { @res = @_ });
+      $connect->wait_all_responses;
+      if ( my @err = grep { ! defined $_->[0] } @{$res[0]} ) {
+          die "Storage->delete error: $err[0][1]\n";
+      }
+      return 1;
+  }
+  
+  *remove = \&delete;
+  
+  sub get_by_plugin {
+      state $rule = Data::Validator->new(
+          plugin => 'Kurado::Object::Plugin',
+          address => 'Str',
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+  
+      my $set_key  = join "/", 'storage',
+          $args->{address}, $args->{plugin}->plugin_identifier_escaped;
+  
+      my $connect = $self->connect;
+      my $time = time;
+      $connect->zremrangebyscore($set_key, '-inf', '('.$time);
+      my @keys = $connect->zrangebyscore($set_key, $time, '+inf');
+      return {} unless @keys;
+      my @values = $connect->mget(map { $set_key.'/'.$_  } @keys);
+      my %ret = List::MoreUtils::pairwise { ($a, $b) } @keys, @values;
+      return \%ret;
+  }
+  
+  sub get_warn_by_plugin {
+      state $rule = Data::Validator->new(
+          plugin => 'Kurado::Object::Plugin',
+          address => 'Str',
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+  
+      my $set_key  = join "/", '__warn__',
+          $args->{address}, $args->{plugin}->plugin_identifier_escaped;
+  
+      my $connect = $self->connect;
+      my $time = time;
+      $connect->zremrangebyscore($set_key, '-inf', '('.$time);
+      my @keys = $connect->zrangebyscore($set_key, $time, '+inf');
+      return {} unless @keys;
+      my @values = $connect->mget(map { $set_key.'/'.$_  } @keys);
+      my %ret = List::MoreUtils::pairwise { ($a, $b) } @keys, @values;
+      return \%ret;
+  }
+  
+  
+  1;
+  
+  
+KURADO_STORAGE
+
 $fatpacked{"Kurado/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_UTIL';
   package Kurado::Util;
   
@@ -1057,17 +2840,326 @@ $fatpacked{"Kurado/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KUR
   
 KURADO_UTIL
 
-$fatpacked{"Kurado/Worker/MQ.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_WORKER_MQ';
-  package Kurado::Worker::MQ;
+$fatpacked{"Kurado/Web.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_WEB';
+  package Kurado::Web;
   
   use strict;
   use warnings;
-  use base qw/Kurado::Agent::MQ/;
+  use utf8;
+  use 5.10.0;
+  use Kossy;
+  use Log::Minimal;
+  use Kurado::Host;
+  use Kurado::Object::Plugin;
+  
+  
+  our $VERSION = '0.01';
+  
+  sub config_loader {
+      $_[0]->{config_loader}
+  }
+  
+  filter 'fill_config' => sub {
+      my ($app) = @_;
+      sub {
+          my ($self, $c) = @_;
+          $c->stash->{config_loader} = $self->config_loader;
+          $app->($self, $c);
+      };
+  };
+  
+  filter 'get_server' => sub {
+      my ($app) = @_;
+      sub {
+          my ($self, $c) = @_;
+          my $address = $c->req->param('address');
+          $c->halt('400') unless $address;
+          my $host = $self->config_loader->host_by_address($address);
+          $c->halt('404') unless $host;        
+          $c->stash->{host} = Kurado::Host->new(
+              config => $self->config_loader->config,
+              host => $host,
+          );
+          $app->($self, $c);
+      };
+  };
+  
+  filter 'get_plugin' => sub {
+      my ($app) = @_;
+      sub {
+          my ($self, $c) = @_;
+          my $plugin = $c->req->param('plugin_identifier');
+          $c->halt('400') unless $plugin;
+          $c->stash->{plugin} = Kurado::Object::Plugin->new_from_identifier($plugin);
+          $app->($self, $c);
+      };
+  };
+  
+  
+  get '/' => [qw/fill_config/] => sub {
+      my ($self, $c)  = @_;
+  
+      my @services;
+      if ( my $service = $c->req->param('service') ) {
+          $c->halt(404) unless exists $self->config_loader->services->{$service};
+          my $sections = $self->config_loader->services->{$service};
+          push @services, {
+              service => $service,
+              sections => $sections
+          };
+      }
+  
+      $c->render('index.tx', {
+          services => @services ? \@services : $self->config_loader->sorted_services,
+      });
+  };
+  
+  
+  get '/server' => [qw/fill_config get_server/] => sub {
+      my ($self, $c)  = @_;
+      my $time = time;
+      $time = $time - ($time%(60*15));
+      my $result = $c->req->validator([
+          'term' => {
+              default => 'day',
+              rule => [
+                  [['CHOICE',qw/month day 3days 8hours 4hours 1hour custom/],'invalid drawing term'],
+              ],
+          },
+          'from' => {
+              default => timestr($time-3600*32),
+              rule => [
+                  [sub{ HTTP::Date::str2time($_[1]) }, 'invalid From datetime'],
+              ],
+          },
+          'to' => {
+              default => timestr($time),
+              rule => [
+                  [sub{ HTTP::Date::str2time($_[1]) }, 'invalid To datetime'],
+              ],
+          },
+      ]);
+      if ( $result->has_error ) {
+          $c->halt(400,join("\n",@{$result->messages}));
+      }
+  
+      my $m_width=500; 
+      my $l_width=1100;
+      my %terms = (
+          day => [{term=>"day",width=>$m_width},{term=>"week",width=>$m_width}],
+          month => [{term=>"day",width=>400},{term=>"week",width=>400},{term=>"month",width=>400},{term=>"year",width=>400}],
+          "3days" => [{term=>"3days",width=>$l_width}],
+          "8hours" => [{term=>"8hours",width=>$l_width}],
+          "4hours" => [{term=>"4hours",width=>$l_width}],
+          "1hour" => [{term=>"1hour",width=>$l_width}],
+          custom => [{term=>"custom",width=>$l_width}],
+      );
+      my $term = $result->valid('term');
+      my $terms = $terms{$term};
+      $c->render('server.tx', { terms => $terms, term => $term, result => $result });
+  };
+  
+  sub timestr {
+      my $time = shift;
+      my @lt = localtime($time);
+      sprintf('%04d-%02d-%02d %02d:%02d:%02d',$lt[5]+1900,$lt[4]+1,@lt[3,2,1,0]);
+      
+  }
+  
+  get '/graph' => [qw/fill_config get_server get_plugin/] => sub {
+      my ($self, $c)  = @_;
+      my $result = $c->req->validator([
+          'term' => {
+              default => 'day',
+              rule => [
+                  [['CHOICE',qw/year month week day 3days 8hours 4hours 1hour custom/],'invalid drawing term'],
+              ],
+          },
+          'from' => {
+              default => timestr(time-3600*32),
+              rule => [
+                  [sub{ HTTP::Date::str2time($_[1]) }, 'invalid From datetime'],
+              ],
+          },
+          'to' => {
+              default => timestr(time),
+              rule => [
+                  [sub{ HTTP::Date::str2time($_[1]) }, 'invalid To datetime'],
+              ],
+          },
+          'width' => {
+              default => 460,
+              rule => [
+                  ['NATURAL','invalid width'],
+              ],
+          },
+          'graph' => {
+              rule => [
+                  ['NOT_NULL', 'missing graph key'],
+              ],
+          }
+      ]);
+      if ( $result->has_error ) {
+          $c->halt(400,join("\n",@{$result->messages}));
+      }
+      
+      my ($img,$data) = $c->stash->{host}->metrics_graph(
+          plugin => $c->stash->{plugin},
+          graph => $result->valid('graph'),
+          term => $result->valid('term'),
+          from => $result->valid('from'),
+          to => $result->valid('to'),
+          width => $result->valid('width'),
+      );
+      $c->res->content_type('text/plain');
+      $c->res->body($img);
+      return $c->res;
+  };
+  
+  1;
+  
+  
+KURADO_WEB
+
+$fatpacked{"Kurado/Worker.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_WORKER';
+  package Kurado::Worker;
+  
+  use strict;
+  use warnings;
+  use Mouse;
+  use Proclet;
+  use Plack::Loader;
+  use Plack::Builder;
+  
+  use Kurado::Worker::Updater;
+  use Kurado::Web;
+  
+  has 'config_loader' => (
+      is => 'ro',
+      isa => 'Kurado::ConfigLoader',
+      required => 1
+  );
+  
+  has 'root_dir' => (
+      is => 'ro',
+      isa => 'Str',
+      required => 1
+  );
+  
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  sub run {
+      my $self = shift;
+      my $proclet = Proclet->new(
+          err_respawn_interval => 3,
+      );
+      my $updater = Kurado::Worker::Updater->new(
+          config => $self->config_loader->config
+      );
+  
+      $proclet->service(
+          code => sub {
+              local $Log::Minimal::PRINT = sub {
+                  my ( $time, $type, $message, $trace,$raw_message) = @_;
+                  warn "[$type] $message at $trace\n";
+              };
+              $updater->run();
+          },
+          worker => 1,
+          tag => 'updater'
+      );
+  
+      my $app = Kurado::Web->new(
+          config_loader => $self->config_loader,
+          root_dir => $self->root_dir,
+      );
+      my $psgi_app = builder {
+          enable 'ReverseProxy';
+          enable 'Static',
+              path => qr!^/(?:(?:css|fonts|js|img)/|favicon\.ico$)!,
+                  root => $self->root_dir . '/public';
+          $app->psgi;
+      };
+  
+      $proclet->service(
+          code => sub {
+              local $Log::Minimal::PRINT = sub {
+                  my ( $time, $type, $message, $trace,$raw_message) = @_;
+                  warn "[$type] $message at $trace\n";
+              };
+              
+              my $loader = Plack::Loader->load(
+                  'Starlet',
+                  port => 5434,
+                  host => 0,
+                  max_workers => $self->config_loader->config->web_worker,
+              );
+              $loader->run($psgi_app);
+          },
+          tag => 'web',
+      );
+  
+      $proclet->run;
+  }
+  
+  1;
+  
+KURADO_WORKER
+
+$fatpacked{"Kurado/Worker/Updater.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_WORKER_UPDATER';
+  package Kurado::Worker::Updater;
+  
+  use strict;
+  use warnings;
+  use Mouse;
+  use Parallel::Prefork;
+  use Log::Minimal;
+  
+  use Kurado::MQ;
+  use Kurado::Metrics;
+  
+  has 'config' => (
+      is => 'ro',
+      isa => 'Kurado::Config',
+      required => 1
+  );
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  sub run {
+      my $self = shift;
+      my $pm = Parallel::Prefork->new({
+          max_workers  => $self->config->update_worker,
+          trap_signals => {
+              TERM => 'TERM',
+              HUP  => 'TERM',
+          }
+      });
+      while ($pm->signal_received ne 'TERM') {
+          $pm->start(sub{
+              my $mq = Kurado::MQ->new(server => $self->config->redis);
+              my $metrics = Kurado::Metrics->new(config => $self->config);
+              local $SIG{TERM} = sub {
+                  $mq->{stop_loop} = 1;
+              };
+              $mq->subscribe(
+                  "kurado-update" => sub {
+                      my ($topic, $message) = @_;
+                      $metrics->process_message($message);
+                  },
+              );
+          });
+      }
+      $pm->wait_all_children();
+  }
+  
   
   
   1;
   
-KURADO_WORKER_MQ
+  
+KURADO_WORKER_UPDATER
 
 $fatpacked{"Pod/Escapes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'POD_ESCAPES';
   package Pod::Escapes;use strict;use warnings;use 5.006;use vars qw(%Code2USASCII %Name2character %Name2character_number %Latin1Code_to_fallback %Latin1Char_to_fallback $FAR_CHAR $FAR_CHAR_NUMBER $NOT_ASCII @ISA $VERSION @EXPORT_OK %EXPORT_TAGS);require Exporter;@ISA=('Exporter');$VERSION='1.06';@EXPORT_OK=qw(%Code2USASCII %Name2character %Name2character_number %Latin1Code_to_fallback %Latin1Char_to_fallback e2char e2charnum);%EXPORT_TAGS=('ALL'=>\@EXPORT_OK);$FAR_CHAR="?" unless defined$FAR_CHAR;$FAR_CHAR_NUMBER=ord($FAR_CHAR)unless defined$FAR_CHAR_NUMBER;$NOT_ASCII='A' ne chr(65)unless defined$NOT_ASCII;sub e2char {my$in=$_[0];return undef unless defined$in and length$in;if($in =~ m/^(0[0-7]*)$/s){$in=oct$in}elsif($in =~ m/^0?x([0-9a-fA-F]+)$/s){$in=hex $1}if($NOT_ASCII){unless($in =~ m/^\d+$/s){$in=$Name2character{$in};return undef unless defined$in;$in=ord$in}return$Code2USASCII{$in}|| $Latin1Code_to_fallback{$in}|| $FAR_CHAR}if($in =~ m/^\d+$/s){if($] < 5.007 and $in > 255){return$FAR_CHAR}else {return chr($in)}}else {return$Name2character{$in}}}sub e2charnum {my$in=$_[0];return undef unless defined$in and length$in;if($in =~ m/^(0[0-7]*)$/s){$in=oct$in}elsif($in =~ m/^0?x([0-9a-fA-F]+)$/s){$in=hex $1}if($in =~ m/^[0-9]+$/s){return 0 + $in}else {return$Name2character_number{$in}}}%Name2character_number=('lt'=>60,'gt'=>62,'quot'=>34,'amp'=>38,'apos'=>39,'sol'=>47,'verbar'=>124,'lchevron'=>171,'rchevron'=>187,'nbsp',160,'iexcl',161,'cent',162,'pound',163,'curren',164,'yen',165,'brvbar',166,'sect',167,'uml',168,'copy',169,'ordf',170,'laquo',171,'not',172,'shy',173,'reg',174,'macr',175,'deg',176,'plusmn',177,'sup2',178,'sup3',179,'acute',180,'micro',181,'para',182,'middot',183,'cedil',184,'sup1',185,'ordm',186,'raquo',187,'frac14',188,'frac12',189,'frac34',190,'iquest',191,'Agrave',192,'Aacute',193,'Acirc',194,'Atilde',195,'Auml',196,'Aring',197,'AElig',198,'Ccedil',199,'Egrave',200,'Eacute',201,'Ecirc',202,'Euml',203,'Igrave',204,'Iacute',205,'Icirc',206,'Iuml',207,'ETH',208,'Ntilde',209,'Ograve',210,'Oacute',211,'Ocirc',212,'Otilde',213,'Ouml',214,'times',215,'Oslash',216,'Ugrave',217,'Uacute',218,'Ucirc',219,'Uuml',220,'Yacute',221,'THORN',222,'szlig',223,'agrave',224,'aacute',225,'acirc',226,'atilde',227,'auml',228,'aring',229,'aelig',230,'ccedil',231,'egrave',232,'eacute',233,'ecirc',234,'euml',235,'igrave',236,'iacute',237,'icirc',238,'iuml',239,'eth',240,'ntilde',241,'ograve',242,'oacute',243,'ocirc',244,'otilde',245,'ouml',246,'divide',247,'oslash',248,'ugrave',249,'uacute',250,'ucirc',251,'uuml',252,'yacute',253,'thorn',254,'yuml',255,'fnof',402,'Alpha',913,'Beta',914,'Gamma',915,'Delta',916,'Epsilon',917,'Zeta',918,'Eta',919,'Theta',920,'Iota',921,'Kappa',922,'Lambda',923,'Mu',924,'Nu',925,'Xi',926,'Omicron',927,'Pi',928,'Rho',929,'Sigma',931,'Tau',932,'Upsilon',933,'Phi',934,'Chi',935,'Psi',936,'Omega',937,'alpha',945,'beta',946,'gamma',947,'delta',948,'epsilon',949,'zeta',950,'eta',951,'theta',952,'iota',953,'kappa',954,'lambda',955,'mu',956,'nu',957,'xi',958,'omicron',959,'pi',960,'rho',961,'sigmaf',962,'sigma',963,'tau',964,'upsilon',965,'phi',966,'chi',967,'psi',968,'omega',969,'thetasym',977,'upsih',978,'piv',982,'bull',8226,'hellip',8230,'prime',8242,'Prime',8243,'oline',8254,'frasl',8260,'weierp',8472,'image',8465,'real',8476,'trade',8482,'alefsym',8501,'larr',8592,'uarr',8593,'rarr',8594,'darr',8595,'harr',8596,'crarr',8629,'lArr',8656,'uArr',8657,'rArr',8658,'dArr',8659,'hArr',8660,'forall',8704,'part',8706,'exist',8707,'empty',8709,'nabla',8711,'isin',8712,'notin',8713,'ni',8715,'prod',8719,'sum',8721,'minus',8722,'lowast',8727,'radic',8730,'prop',8733,'infin',8734,'ang',8736,'and',8743,'or',8744,'cap',8745,'cup',8746,'int',8747,'there4',8756,'sim',8764,'cong',8773,'asymp',8776,'ne',8800,'equiv',8801,'le',8804,'ge',8805,'sub',8834,'sup',8835,'nsub',8836,'sube',8838,'supe',8839,'oplus',8853,'otimes',8855,'perp',8869,'sdot',8901,'lceil',8968,'rceil',8969,'lfloor',8970,'rfloor',8971,'lang',9001,'rang',9002,'loz',9674,'spades',9824,'clubs',9827,'hearts',9829,'diams',9830,'OElig',338,'oelig',339,'Scaron',352,'scaron',353,'Yuml',376,'circ',710,'tilde',732,'ensp',8194,'emsp',8195,'thinsp',8201,'zwnj',8204,'zwj',8205,'lrm',8206,'rlm',8207,'ndash',8211,'mdash',8212,'lsquo',8216,'rsquo',8217,'sbquo',8218,'ldquo',8220,'rdquo',8221,'bdquo',8222,'dagger',8224,'Dagger',8225,'permil',8240,'lsaquo',8249,'rsaquo',8250,'euro',8364,);{%Name2character=();my($name,$number);while(($name,$number)=each%Name2character_number){if($] < 5.007 and $number > 255){$Name2character{$name}=$FAR_CHAR}else {$Name2character{$name}=chr$number}}$Name2character{'lt' }='<';$Name2character{'gt' }='>';$Name2character{'quot'}='"';$Name2character{'amp' }='&';$Name2character{'apos'}="'";$Name2character{'sol' }='/';$Name2character{'verbar'}='|'}%Code2USASCII=(32,' ',33,'!',34,'"',35,'#',36,'$',37,'%',38,'&',39,"'",40,'(',41,')',42,'*',43,'+',44,',',45,'-',46,'.',47,'/',48,'0',49,'1',50,'2',51,'3',52,'4',53,'5',54,'6',55,'7',56,'8',57,'9',58,':',59,';',60,'<',61,'=',62,'>',63,'?',64,'@',65,'A',66,'B',67,'C',68,'D',69,'E',70,'F',71,'G',72,'H',73,'I',74,'J',75,'K',76,'L',77,'M',78,'N',79,'O',80,'P',81,'Q',82,'R',83,'S',84,'T',85,'U',86,'V',87,'W',88,'X',89,'Y',90,'Z',91,'[',92,"\\",93,']',94,'^',95,'_',96,'`',97,'a',98,'b',99,'c',100,'d',101,'e',102,'f',103,'g',104,'h',105,'i',106,'j',107,'k',108,'l',109,'m',110,'n',111,'o',112,'p',113,'q',114,'r',115,'s',116,'t',117,'u',118,'v',119,'w',120,'x',121,'y',122,'z',123,'{',124,'|',125,'}',126,'~',);%Latin1Code_to_fallback=();@Latin1Code_to_fallback{0xA0 .. 0xFF}=(' ',qq{!},qq{C/},'PS',qq{\$?},qq{Y=},qq{|},'SS',qq{"},qq{(c)},'a',qq{<<},qq{!},"",qq{(r)},qq{-},'deg',qq{+-},'2','3',qq{'},'u','P',qq{*},qq{,},'1','o',qq{>>},qq{1/4},qq{1/2},qq{3/4},qq{?},'A','A','A','A','A','A','AE','C','E','E','E','E','I','I','I','I','D','N','O','O','O','O','O','x','O','U','U','U','U','U','Th','ss','a','a','a','a','a','a','ae','c','e','e','e','e','i','i','i','i','d','n','o','o','o','o','o',qq{/},'o','u','u','u','u','y','th','y',);{%Latin1Char_to_fallback=();my($k,$v);while(($k,$v)=each%Latin1Code_to_fallback){$Latin1Char_to_fallback{chr$k}=$v}}1;
