@@ -13,6 +13,7 @@
 : block content -> { }
 
 <script type="text/javascript" src="<: $c.req.uri_for('/js/jquery.min.js') :>"></script>
+<script type="text/javascript" src="<: $c.req.uri_for('/js/jquery.shiftcheckbox.js') :>"></script>
 <script type="text/javascript" src="<: $c.req.uri_for('/js/bootstrap.min.js') :>"></script>
 <script type="text/javascript" src="<: $c.req.uri_for('/js/bootstrap-datetimepicker.min.js') :>"></script>
 <script>
@@ -28,6 +29,80 @@ $(function(){
     var subnav = $(this);
     subnav.parents('.subnav-wrapper').css('height',subnav.outerHeight(true));
   });
+  var serverChecked = function () {
+    $("input[name=server-address]").each(function(){
+      if( $(this).is(":checked") ) {
+        $(this).parents('td').addClass("host-checked");
+      }
+      else {
+        $(this).parents('td').removeClass("host-checked")
+      }
+      if ( $("input[name=server-address]:checked").length >= 2 ) {
+        $('#uncheck-all').removeClass('disabled');
+        $('#uncheck-all').find('span').addClass('glyphicon-check');
+        $('#uncheck-all').find('span').removeClass('glyphicon-unchecked');
+        $('#open-checked').removeClass('disabled');
+      }
+      else {
+        $('#uncheck-all').addClass('disabled')
+        $('#uncheck-all').find('span').addClass('glyphicon-unchecked');
+        $('#uncheck-all').find('span').removeClass('glyphicon-check');
+        $('#open-checked').addClass('disabled')
+      }
+    });
+  };
+  $("input[name=server-address]").shiftcheckbox();
+  $("input[name=server-address]").on('click',serverChecked);
+  serverChecked.call();
+  $('#uncheck-all').on('click',function(e){
+    $("input[name=server-address]").attr('checked',false);
+    serverChecked.call();
+    e.preventDefault();
+  });
+  $("#open-checked").click(function(){
+    var form = $('<form/>');
+    $("input[name=server-address]:checked").each( function () {
+      var input = $('<input/>');
+      input.attr('name','address');
+      input.attr('value',$(this).val());
+      form.append(input);
+    });
+    $(this).attr('href','/servers?' + form.serialize());
+  });
+
+  var hostslen = $("a.host-address").length;
+  var haserror_api = function (startnum) {
+    var form = $('<form/>');
+    var endnum = (startnum+100 < hostslen) ? startnum+100 : hostslen;
+      $("a.host-address").slice(startnum, endnum).each(function(){
+      var input = $('<input/>');
+        input.attr('name','address');
+        input.attr('value',$(this).text());
+        form.append(input);
+      });
+      $.post(
+        '/api/haserror',
+        form.serialize(),
+        function (data) {
+          $("a.host-address").slice(startnum, endnum).each(function(){
+            var ip = $(this).text();
+            var tag = $(this).parent().children("span.host-status");
+            if ( data[ip] == 2 ) {
+              tag.addClass("host-status-crit");
+            }
+            else if ( data[ip] == 1 ) {
+              tag.addClass("host-status-warn");
+            }
+            else {
+              tag.addClass("host-status-ok");
+            }
+          });
+          if ( endnum < hostslen ) haserror_api(startnum+100);
+        },
+        "json"
+      );
+    };
+    haserror_api(0);
 });
 </script>
 </body>

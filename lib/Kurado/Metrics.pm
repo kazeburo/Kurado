@@ -22,6 +22,7 @@ sub process_message {
     my ($self,$message) = @_;
     my $rrd = Kurado::RRD->new(data_dir=>$self->config->data_dir);
     my $storage = Kurado::Storage->new(redis=>$self->config->redis);
+    my %uniq_address_plugin;
     foreach my $line ( split /\n/, $message ) {
         chomp $line;
         my $msg = eval {
@@ -31,6 +32,8 @@ sub process_message {
             warnf("'$line' has error '$@'. ignore it");
             next;
         }
+        my $key = $msg->address ."\t".$msg->plugin->plugin_identifier;
+        $uniq_address_plugin{$key} = $msg;
         if ( $msg->metrics_type eq 'metrics' ) {
             # rrd update
             #debugf("rrd update %s",$msg);
@@ -50,6 +53,12 @@ sub process_message {
             # update storage
             $storage->set_warn(msg => $msg);
         }
+    }
+
+    for my $key (keys %uniq_address_plugin) {
+        $storage->set_last_recieved(
+            msg => $uniq_address_plugin{$key},
+        );        
     }
     
 }

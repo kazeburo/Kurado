@@ -11,7 +11,7 @@
           <a href="/"><span class="subnav-logo"></span></a>
           <a href="<: $c.req.uri_for('/',[service=>$c.stash.host.service]) :>"><: $c.stash.host.service :></a>
           /
-          <a href="<: $c.req.uri_for('/',[service=>$c.stash.host.service]) :>"><: $c.stash.host.address :></a>
+          <a href="<: $c.req.uri_for('/server',[address=>$c.stash.host.address]) :>"><: $c.stash.host.address :></a>
           <: $c.stash.host.hostname :>
           <span class="host-comments"><: $c.stash.host.comments :></span>
         </h2>
@@ -81,10 +81,11 @@
 <tr><td>
 
 : for $c.stash.host.metrics_list -> $plugin {
-  <h3 class="plugin-name"><span class="glyphicon glyphicon-tasks"></span> <: $plugin.plugin.plugin :></h3>
+  <div class="plugin">
+  <h3 class="plugin-name <: $plugin.warn.size() ? "has-warn" : "" :>"><span class="glyphicon glyphicon-tasks"></span> <: $plugin.plugin.plugin :></h3>
 
   : for $plugin.warn.keys() -> $warn_key {
-    <div class="alert alert-danger" role="alert"><: $plugin.warn[$warn_key] :></div>
+    <div class="alert alert-danger" role="alert"><strong><: $warn_key :>:</strong> <: $plugin.warn[$warn_key] :></div>
   : }
 
   : for $plugin.metrics -> $metrics {
@@ -94,7 +95,7 @@
     <div class="metrics-meta">
     : for $metrics.meta.keys().sort() -> $meta_key {
       <span>
-      <span class="label label-info"><: $meta_key :></span>
+      <span class="label label-meta"><: $meta_key :></span>
       <: $metrics.meta[$meta_key] :>
       </span>
     : }
@@ -109,10 +110,10 @@
         : }
       : }
       </div>
-    : }
-
-  : }
-: }
+    : } # graph
+  : } # metrics
+  </div>
+: } # plugin
 
 </td></tr>
 </table>

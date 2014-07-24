@@ -57,11 +57,11 @@ body {
 }
 
 .nav-sidebar .list-group a.list-group-item:hover {
- /* background-color: #272b30; */
+  background-color: #3e444c;
 }
 
 .nav-sidebar .list-group .list-group-item.active:hover {
-  background-color: #272b3;
+  background-color: #272b30;
 }
 
 
@@ -136,7 +136,10 @@ h3.service {
 .servers .table td {
   padding: 3px;
 }
-
+.servers .table td.host-checked {
+  background-color: #3e444c;
+  /* #2e3338;*/
+}
 .servers .table th {
   padding: 1px;
   padding-left: 22px;
@@ -145,7 +148,7 @@ h3.service {
   font-size: 17px;
 }
 
-.icon-ok {
+.host-status {
   color: #888;
 }
 
@@ -171,15 +174,37 @@ h3.service {
 }
 
 /* graphs */
-
+table.metrics {
+  margin-top: 10px;
+}
 table.metrics,
 table.metrics td {
   background-color: transparent;
 }
 
+.plugin {
+  margin-bottom: 15px;
+}
+
+.plugin .alert {
+  margin-bottom: 2px;
+  padding: 8px;
+  border: 1px solid #ff0702;
+}
+
 h3.plugin-name {
+  margin-top: 5px;
+  margin-bottom: 5px;
   font-size: 15px;
   text-transform:uppercase;
+}
+
+h3.plugin-name.has-warn {
+  color: #ff0702;
+}
+
+.label-meta {
+  background-color: #f89406;
 }
 
 h4.metrics-label {
@@ -188,6 +213,7 @@ h4.metrics-label {
   /* border-top: 1px solid #222; */
   background-color: #c8c8c8;
   padding: 3px 3px 3px 8px;
+  margin-top: 3px;
   margin-bottom: 5px;
   text-shadow: none;
   border-radius: 2px;
@@ -195,7 +221,8 @@ h4.metrics-label {
 
 .metrics-meta {
   color: #ccc;
-  font-size: 15px;
+  font-size: 14px;
+  margin-bottom: 4px;
 }
 
 .metrics-meta > span {

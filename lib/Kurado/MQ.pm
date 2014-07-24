@@ -216,7 +216,7 @@ sub subscribe {
 
     my $queue_wait = int($self->{timeout}/2); # brocking time. half of timeout
     $queue_wait ||= 1;
-    my @req = ('BRPOP');
+    my @req = ('BLPOP');
     push @req, $_ for keys %callbacks;
     push @req, $queue_wait;
 
@@ -224,7 +224,7 @@ sub subscribe {
     $self->{stop_loop} = 0;
     while ( !$self->{stop_loop} ) {
         $self->send_message(@req) 
-            or die "failed to send_message 'BRPOP': $!\n";
+            or die "failed to send_message 'BLPOP': $!\n";
         my $res = $self->read_message();
         if ( !ref $res || !$res->success ) {
             die "failed to pop msg: ".$res->error."\n";

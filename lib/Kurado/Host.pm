@@ -12,9 +12,9 @@ use Kurado::Plugin::Compile;
 use Kurado::Storage;
 use Kurado::RRD;
 
-has 'config' => (
+has 'config_loader' => (
     is => 'ro',
-    isa => 'Kurado::Config',
+    isa => 'Kurado::ConfigLoader',
     required => 1
 );
 
@@ -25,6 +25,10 @@ has 'host' => (
 );
 
 __PACKAGE__->meta->make_immutable();
+
+sub config {
+    $_[0]->config_loader->config;
+}
 
 sub plugins {
     my $self = shift;
@@ -70,6 +74,15 @@ sub metrics_list {
             plugin => $plugin,
             address => $self->address,
         );
+        
+        my $last_received = $self->storage->get_last_recieved(
+            plugin => $plugin,
+            address => $self->address,            
+        );
+        if ( (!$last_received || $last_received < time - 300 ) && !$self->config_loader->has_fetch_plugin($plugin->plugin) ) {
+            $warn->{'__system__'} = 'Metrics are not updated in the last 5 minutes. This host or kurado_agent has been down';
+            $warn->{'__system__'} .= '.last updated: ' . localtime($last_received) if $last_received;
+        }
 
         #run list
         my $metrics = eval {

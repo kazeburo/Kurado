@@ -77,6 +77,7 @@ sub update {
         '-t', 'n',
         '--', join(':', $args->{msg}->timestamp, $args->{msg}->value)
     );
+    debugf('rrd update %s %s', join(" ", @param), $path);
     eval {
         RRDs::update($path, @param);
         my $ERR=RRDs::error;
@@ -87,7 +88,7 @@ sub update {
             die "$ERR\n" if $ERR;
         }
     };
-    die "rrd update failed: $@" if $@;
+    die "rrd update failed: $@\n" if $@;
     return 1;
 }
 
@@ -186,7 +187,7 @@ sub graph {
     my @opt = (
         $tmpfile,
         '-w', $args->{width},
-        '-h', 110,
+        '-h', 100,
         '-l', 0, #minimum
         '-u', 2, #maximum
         '-x', $xgrid,
@@ -204,6 +205,7 @@ sub graph {
         '--color', 'AXIS#'.uc('686868'),
         '--color', 'SHADEA#'.uc('313131'),
         '--color', 'SHADEB#'.uc('313131'),
+        '--color', 'ARROW#'.uc('f89407'),
         '--border', 1,
         '-t', $period_title,
         '--font', "AXIS:8:",
@@ -214,19 +216,19 @@ sub graph {
     eval {
         @graphv = RRDs::graph(map { Encode::encode_utf8($_) } @opt);
         my $ERR=RRDs::error;
-        die $ERR if $ERR;
+        die "$ERR\n" if $ERR;
     };
     if ( $@ ) {
         unlink($tmpfile);
-        die "draw graph failed: $@";
+        die "draw graph failed: $@\n";
     }
 
-    open( my $fh, '<:bytes', $tmpfile ) or die "cannot open graph tmpfile: $!";
+    open( my $fh, '<:bytes', $tmpfile ) or die "cannot open graph tmpfile: $!\n";
     local $/;
     my $graph_img = <$fh>;
     unlink($tmpfile);
 
-    die 'something wrong with image' unless $graph_img;
+    die "something wrong with image\n" unless $graph_img;
 
     return ($graph_img,\@graphv);
 }

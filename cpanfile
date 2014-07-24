@@ -5,7 +5,7 @@ requires 'Log::Minimal',   '0.16';
 requires 'List::MoreUtils';
 requires 'Starlet',        '0.21';
 requires 'HTTP::Parser::XS', '0.16';
-requires 'Proclet',        '0.31';
+requires 'Proclet',        '0.35';
 requires 'Plack::Builder::Conditionals',        '0.03';
 requires 'JSON', 2;
 requires "JSON::XS";
@@ -24,6 +24,7 @@ requires 'File::Zglob';
 requires 'Unicode::EastAsianWidth';
 requires 'Text::MicroTemplate::DataSection';
 requires 'Text::MicroTemplate::Extended';
+requires 'Parallel::Scoreboard';
 
 on 'test' => sub {
     requires 'Test::More',     '0.96';

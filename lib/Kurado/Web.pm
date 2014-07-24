@@ -34,7 +34,7 @@ filter 'get_server' => sub {
         my $host = $self->config_loader->host_by_address($address);
         $c->halt('404') unless $host;        
         $c->stash->{host} = Kurado::Host->new(
-            config => $self->config_loader->config,
+            config_loader => $self->config_loader,
             host => $host,
         );
         $app->($self, $c);

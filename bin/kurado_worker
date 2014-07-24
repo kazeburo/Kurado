@@ -8,6 +8,7 @@ use lib "$FindBin::Bin/../lib";
 use Getopt::Long;
 use Pod::Usage;
 use Log::Minimal;
+use Encode;
 
 use Kurado;
 use Kurado::ConfigLoader;
@@ -42,7 +43,7 @@ my $root_dir = "$FindBin::Bin/..";
 
 infof("loading config..");
 my $loader = Kurado::ConfigLoader->new(path=>$path);
-infof($_) for grep { $_ } split /\n/, $loader->statistics;
+infof(Encode::encode_utf8($_)) for grep { $_ } split /\n/, $loader->statistics;
 
 infof("run workers");
 my $worker = Kurado::Worker->new(

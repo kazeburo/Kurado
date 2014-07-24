@@ -37,6 +37,7 @@ sub metrics_list {
     $list .= join("\t",'# ',@info)."\n";
     # traffic
     my @traffic_interface = split /,/, $meta->{'traffic-interfaces'} || '';
+    $list .= "# Traffic\twarn\tno interfaces\n" if ! @traffic_interface;
     foreach my $interface ( @traffic_interface ) {
         $list .= "# Traffic($interface)\n";
         $list .= "traffic-$interface\n";
@@ -47,6 +48,7 @@ sub metrics_list {
 
     # disk usage
     my @usage_devices = split /,/, $meta->{'disk-usage-devices'} || '';
+    $list .= "# Disk Usage\twarn\tno devices\n" if ! @usage_devices;
     foreach my $device ( @usage_devices ) {
         my $mount = exists $meta->{"disk-usage-".$device."-mount"} ? $meta->{"disk-usage-".$device."-mount"} : $device;
         $list .= "# Disk Usage($mount)\n";
@@ -55,6 +57,7 @@ sub metrics_list {
 
     # disk io
     my @io_devices = split /,/, $meta->{'disk-io-devices'} || '';
+    $list .= "# Disk IO\twarn\tno devices\n" if ! @io_devices;
     foreach my $device ( @usage_devices ) {
         $list .= "# Disk IO($device)\n";
         $list .= "disk-io-byte-$device\n";
@@ -123,7 +126,7 @@ AREA:in#00C000:Inbound
 GPRINT:in:LAST:Cur\:%6.2lf%sbps
 GPRINT:in:AVERAGE:Ave\:%6.2lf%sbps
 GPRINT:in:MAX:Max\:%6.2lf%sbps\l
-LINE2:out#0000FF:Outbound 
+LINE1:out#0000FF:Outbound 
 GPRINT:out:LAST:Cur\:%6.2lf%sbps
 GPRINT:out:AVERAGE:Ave\:%6.2lf%sbps
 GPRINT:out:MAX:Max\:%6.2lf%sbps\l
@@ -251,12 +254,12 @@ GPRINT:free:LAST:Cur\:%6.2lf%sByte
 GPRINT:free:AVERAGE:Ave\:%6.2lf%sByte
 GPRINT:free:MAX:Max\:%6.2lf%sByte\l
 # used swap
-LINE2:swap-used#a51800:used  swap
+LINE1:swap-used#a51800:used  swap
 GPRINT:swap-used:LAST:Cur\:%6.2lf%sByte
 GPRINT:swap-used:AVERAGE:Ave\:%6.2lf%sByte
 GPRINT:swap-used:MAX:Max\:%6.2lf%sByte\l
 # total swap
-LINE2:swap-total#d77c79:total swap
+LINE1:swap-total#d77c79:total swap
 GPRINT:swap-total:LAST:Cur\:%6.2lf%sByte
 GPRINT:swap-total:AVERAGE:Ave\:%6.2lf%sByte
 GPRINT:swap-total:MAX:Max\:%6.2lf%sByte\l

@@ -15,6 +15,13 @@ has 'config_loader' => (
     required => 1
 );
 
+has 'scoreboard' => (
+    is => 'ro',
+    isa => 'Kurado::ScoreBoard',
+    required => 1
+);
+
+
 __PACKAGE__->meta->make_immutable();
 
 sub config {
@@ -36,22 +43,27 @@ sub run {
             local $SIG{TERM} = sub {
                 $mq->{stop_loop} = 1;
             };
+            $self->scoreboard->idle;
+            my $process = 0;
             $mq->subscribe(
                 "kurado-fetch" => sub {
                     my ($topic, $message) = @_;
+                    my $gurad = $self->scoreboard->busy;
                     my ($address, $plugin_identifier) = split /\t/, $message, 2;
                     my $host = $self->config_loader->host_by_address($address);
                     if (!$host) {
                         warnf 'address"%s is not found. skip it', $address;
                         return;
                     }
+                    $process++;
+                    $mq->{stop_loop} =  1 if $process > 500;
                     my $plugin = Kurado::Object::Plugin->new_from_identifier($plugin_identifier);
                     my $host_obj = Kurado::Host->new(
-                        config => $self->config,
+                        config_loader => $self->config_loader,
                         host => $host,
                     );
-                    my $message = $host_obj->fetch_metrics(plugin => $plugin);
-                    $mq->enqueue('kurado-update',$message);
+                    my $metrics = $host_obj->fetch_metrics(plugin => $plugin);
+                    $mq->enqueue('kurado-update',$metrics);
                 },
             );
         });

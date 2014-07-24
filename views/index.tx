@@ -9,8 +9,8 @@
       <a href="/"><span class="subnav-logo"></span></a>
       </div>
       <div class="col-sm-5">
-        <button type="button" class="btn btn-default btn-xs" disabled="disabled"><span class="glyphicon glyphicon-unchecked"></span> チェックを外す</button>
-        <button type="button" class="btn btn-default btn-xs" disabled="disabled">チェックしたホストを表示</button>
+        <a id="uncheck-all" roll="button" class="btn btn-default btn-xs disabled" href="#"><span class="glyphicon glyphicon-unchecked"></span> チェックを外す</a>
+        <a id="open-checked" roll="button" class="btn btn-default btn-xs disabled" href="/"><span class="glyphicon glyphicon-new-window"></span> チェックしたホストを表示</a>
       </div>
       <div class="col-sm-4" style="text-align: right;">
         <a href="/" class="subnav-brand">Kurado - Server Performance Metrics</a>
@@ -48,8 +48,11 @@
     : for $section.hosts -> $host {
     <tr>
      <td>
-      <span class="glyphicon glyphicon-remove icon-ok"></span>
-      <span class="host-checkbox"><input  name="server-address" type="checkbox" value="<: $host.address :>" /></span>
+      <span class="host-status glyphicon glyphicon-flash"></span>
+      <span class="glyphicon glyphicon-thumbs-up"></span>
+      <span class="glyphicon glyphicon-fire"></span>
+      <span class="glyphicon glyphicon-warning-sign"></span>
+      <span class="host-checkbox"><input name="server-address" type="checkbox" value="<: $host.address :>" /></span>
       <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>" class="host-address"><: $host.address :></a>
       <span class="host-hostname"><: $host.hostname :></span>
       <span class="host-comments"><: $host.comments :></span>

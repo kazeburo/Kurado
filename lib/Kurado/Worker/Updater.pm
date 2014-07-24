@@ -9,13 +9,24 @@ use Log::Minimal;
 use Kurado::MQ;
 use Kurado::Metrics;
 
-has 'config' => (
+has 'config_loader' => (
     is => 'ro',
-    isa => 'Kurado::Config',
+    isa => 'Kurado::ConfigLoader',
     required => 1
 );
 
+has 'scoreboard' => (
+    is => 'ro',
+    isa => 'Kurado::ScoreBoard',
+    required => 1
+);
+
+
 __PACKAGE__->meta->make_immutable();
+
+sub config {
+    $_[0]->config_loader->config
+}
 
 sub run {
     my $self = shift;
@@ -33,9 +44,11 @@ sub run {
             local $SIG{TERM} = sub {
                 $mq->{stop_loop} = 1;
             };
+            $self->scoreboard->idle;
             $mq->subscribe(
                 "kurado-update" => sub {
                     my ($topic, $message) = @_;
+                    my $gurad = $self->scoreboard->busy;
                     $metrics->process_message($message);
                 },
             );

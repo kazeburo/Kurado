@@ -41,6 +41,7 @@ sub set {
     );
 }
 
+
 sub set_warn {
     state $rule = Data::Validator->new(
         msg => 'Kurado::Object::Msg'
@@ -71,14 +72,18 @@ sub _set {
     my $key = join "/", $args->{type}, 
         $args->{msg}->address, $args->{msg}->plugin->plugin_identifier_escaped, $args->{msg}->key;
     my $connect = $self->connect;
-
-    my $expire_at = time + $args->{expires};
+    my $now = time;
+    my $expire_at = $now + $args->{expires};
     my $value = (exists $args->{value}) ? $args->{value} : $args->{msg}->value;
     my @res;
     $connect->multi(sub {});
     $connect->zadd($set_key, $expire_at, $args->{msg}->key, sub {});
     $connect->set($key, $value, sub {});
     $connect->expireat($key, $expire_at, sub {});
+    if ( $args->{type} eq '__warn__' ) { #XXX
+        my $has_warn_key = join "/", '__warn__', $args->{msg}->address;
+        $connect->set($has_warn_key, $now, 'EX', $args->{expires}, sub {});
+    }
     $connect->exec(sub { @res = @_ });
     $connect->wait_all_responses;
     if ( my @err = grep { ! defined $_->[0] } @{$res[0]} ) {
@@ -150,10 +155,46 @@ sub get_warn_by_plugin {
     my $time = time;
     $connect->zremrangebyscore($set_key, '-inf', '('.$time);
     my @keys = $connect->zrangebyscore($set_key, $time, '+inf');
-    return {} unless @keys;
+    if ( !@keys ) {
+        return {};
+    }
     my @values = $connect->mget(map { $set_key.'/'.$_  } @keys);
     my %ret = List::MoreUtils::pairwise { ($a, $b) } @keys, @values;
     return \%ret;
+}
+
+sub set_last_recieved {
+    state $rule = Data::Validator->new(
+        msg => 'Kurado::Object::Msg',
+    )->with('Method');
+    my ($self, $args) = $rule->validate(@_);
+
+    my $value = time;
+    my $key = join "/", '__last_recieved__', $args->{msg}->address, $args->{msg}->plugin->plugin_identifier_escaped;
+    $self->connect->set($key, $value, 'EX', 365*86400);
+}
+
+
+sub get_last_recieved {
+    state $rule = Data::Validator->new(
+        plugin => 'Kurado::Object::Plugin',
+        address => 'Str',
+    )->with('Method');
+    my ($self, $args) = $rule->validate(@_);
+
+    my $value = time;
+    my $key = join "/", '__last_recieved__', $args->{address}, $args->{plugin}->plugin_identifier_escaped;
+    $self->connect->get($key);
+}
+
+sub has_warn {
+    state $rule = Data::Validator->new(
+        address => 'Str',
+    )->with('Method');
+    my ($self, $args) = $rule->validate(@_);
+    my $key = join "/", '__warn__', $args->{address};
+    $self->connect->get($key);
+    
 }
 
 
