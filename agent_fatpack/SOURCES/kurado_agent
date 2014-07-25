@@ -4717,7 +4717,7 @@ if ( $dump ) {
     exit;
 }
 
-if ( !$self_ip || !$mq || !$interval) {
+if ( !$mq || !$interval) {
     pod2usage(-verbose=>0,-exitval=>1);
 }
 
@@ -4733,6 +4733,9 @@ supervisor(sub {
     local $SIG{TERM}  = sub {
         $mq->{stop_loop} = 1;
     };
+    $self_ip ||= $mq->{sock}->sockhost;
+    warn sprintf('start kurado_agent. mq:%s:%s self_ip:%s interval:%ssec max_delay:%ssec'."\n",
+                 $mq->{sock}->peerhost, $mq->{sock}->peerport, $self_ip, $interval*60, $max_delay);
     $mq->timetick_publisher(
         $interval*60,
         $max_delay,
@@ -4763,7 +4766,7 @@ kurado_agent - Kurado agent
   % kurado_agent --dump
   
   # run 
-  % kurado_agent --interval 1 --self-ip ip.address.of.myself --mq 127.0.0.1:6379 --conf-d /etc/kurado_agent/conf.d
+  % kurado_agent --interval 1 --mq 127.0.0.1:6379 --conf-d /etc/kurado_agent/conf.d
 
 =head1 DESCRIPTION
 
@@ -4783,7 +4786,11 @@ interval minutes default 1 (60sec)
 
 =item --mq
 
-Redis Server for message queue
+Redis Server for message queue (required)
+
+=item --self-ip
+
+ip address of this host. If not exists, use socket addr of connection to redis server
 
 =item --pidfile
 

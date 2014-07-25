@@ -13,6 +13,7 @@ Source3:        kurado_agent.sysconf
 BuildArch:      noarch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-%(%{__id_u} -n)
 Requires:       perl
+AutoReqProv:    no
 
 %description
 Daemon for Kurado Server Performance Metrics
@@ -31,7 +32,7 @@ mkdir -p $RPM_BUILD_ROOT/usr/local/bin
 install -m 755 %{SOURCE0} $RPM_BUILD_ROOT/usr/local/bin/kurado_agent
 
 %post
-/sbin/chkconfig --add httpd_proxy
+/sbin/chkconfig --add kurado_agent
 
 %files
 %defattr(-,root,root,-)
