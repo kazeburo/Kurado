@@ -1,0 +1,94 @@
+#!/bin/sh
+#
+#       /etc/rc.d/init.d/kurado_agent
+#
+#       Daemon for Kurado Server Performance Metrics
+#
+# chkconfig:   2345 95 95
+# description: Daemon for Kurado Server Performance Metrics
+
+### BEGIN INIT INFO
+# Provides:       kurado_agent
+# Short-Description: start and stop kurado_agent
+# Description: Daemon for Kurado Server Performance Metrics
+### END INIT INFO
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+prog="kurado_agent"
+
+[ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
+
+BIN=${BIN:="/usr/local/bin/$prog"}
+LOGFILE=${LOGILE:="/var/log/$prog.log"}
+PIDFILE=${PIDFILE:="/var/run/$prog.pid"}
+
+lockfile=/var/lock/subsys/$prog
+
+start() {
+    [ -x $exec ] || exit 5
+
+    echo -n $"Starting $prog:"
+    $BIN ${SELFIP:+--self-ip=$SELFIP} \
+         ${MQ:+--mq=$MQ} \
+         --pidfile=$PIDFILE \
+         $OTHER_OPTS >>$LOGFILE 2>&1 &
+    sleep 3
+    if ! kill -0 $(cat $PIDFILE 2>/dev/null) >/dev/null 2>&1; then
+        failure
+        echo
+
+        return 1
+    fi
+
+    touch $lockfile
+    success
+    echo
+
+    return 0
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc -p $PIDFILE -TERM
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+rh_status() {
+    status -p $PIDFILE $prog
+}
+
+rh_status_q() {
+    rh_status >/dev/null 2>&1
+}
+
+case "$1" in
+    start)
+        rh_status_q && exit 0
+        $1
+        ;;
+    stop)
+        rh_status_q || exit 0
+        $1
+        ;;
+    restart)
+        $1
+        ;;
+    status)
+        rh_status
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart}"
+        exit 2
+esac
+
+exit $?

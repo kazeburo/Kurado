@@ -1,0 +1,4 @@
+# MQ="127.0.0.1:6379"
+# SELFIP="127.0.0.1"
+# OTHER_OPTS="--max-delay=10"
+OTHER_OPTS="--conf-d=/etc/kurado_agent"

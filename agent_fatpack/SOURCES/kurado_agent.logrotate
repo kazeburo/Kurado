@@ -1,0 +1,10 @@
+/var/log/kurado_agent.log {
+  daily
+  rotate 7
+  missingok
+  sharedscripts
+  notifempty
+  compress
+  copytruncate
+}
+

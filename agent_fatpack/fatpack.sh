@@ -1,6 +1,6 @@
 #!/bin/bash
 SRC=bin/kurado_agent
-DST=agent_fatpack/kurado_agent
+DST=agent_fatpack/SOURCES/kurado_agent
 export PLENV_VERSION=5.8.5
 export PERL5LIB=`dirname $0`/../lib/
 
@@ -18,4 +18,14 @@ fi
 perl -pi -e 's|^#!/usr/bin/perl|#!/usr/bin/env perl|' $DST
 chmod +x $DST
 
+echo "%_topdir $(pwd)/agent_fatpack" > $HOME/.rpmmacros
+echo "%debug_package %{nil}" >> $HOME/.rpmmacros
+
+cp -af agent_fatpack/SPECS/kurado_agent.spec.tmpl agent_fatpack/SPECS/kurado_agent.spec
+D_VER=$(date +%Y%m%d)
+D_REL=$(date +%H%M|sed 's/^0//')
+sed -i "s/<VERSION>/$D_VER/" agent_fatpack/SPECS/kurado_agent.spec
+sed -i "s/<RELEASE>/$D_REL/" agent_fatpack/SPECS/kurado_agent.spec
+head agent_fatpack/SPECS/kurado_agent.spec
+rpmbuild -bb agent_fatpack/SPECS/kurado_agent.spec
 
