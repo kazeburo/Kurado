@@ -34,6 +34,9 @@ body {
   margin-bottom: 5px;
   padding-bottom: 3px;
 }
+.nav-sidebar .list-group .list-group-item:first-child {
+  border-top: 1px solid #222;
+}
 
 .nav-sidebar .list-group .list-group-item {
   border-radius: 0px;
@@ -114,12 +117,20 @@ body {
 
 #subnav .subnav-title a,
 #subnav .subnav-title a:hover {
-  text-decoration: none;
-  color: #eee;
+  text-decoration: underline;
+  color: #fff;
 }
 
 .graph-nav {
   background-color: #272b30;
+}
+
+.graph-nav .btn-default.active {
+  background-color: #f89406;
+}
+.graph-nav .btn-default.active:hover {
+  background-color: #f89406;
+  background-image: none;
 }
 
 /* table */
@@ -152,6 +163,15 @@ h3.service {
   color: #888;
 }
 
+.host-status-crit {
+  color: #ff0702;
+}
+
+.host-status-warn {
+  color: #ff5c00;
+}
+
+
 .host-checkbox {
   position: relative;
   display: inline-block;
@@ -174,12 +194,34 @@ h3.service {
 }
 
 /* graphs */
+table.servers-table.metrics,
 table.metrics {
   margin-top: 10px;
 }
 table.metrics,
+table.servers-table.metrics td,
+table.servers-table.metrics th,
 table.metrics td {
   background-color: transparent;
+}
+
+table.servers-table.metrics td,
+table.servers-table.metrics th {
+  min-width: 520px;
+  max-width: 520px;
+  padding-right: 4px;
+  vertical-align: top;
+  overflow: hidden;
+}
+
+table.servers-table.metrics th {
+  font-size: 19px;
+  text-align: center;
+  border-bottom: 1px solid #222;
+  padding-bottom: 10px;
+}
+table.servers-table.metrics th a {
+  text-decoration: underline;
 }
 
 .plugin {
@@ -232,4 +274,8 @@ h4.metrics-label {
 .graphs {
   margin: 2px 0px;
   white-space: nowrap
+}
+
+table.servers-table.metrics .graphs {
+  text-align: center;
 }

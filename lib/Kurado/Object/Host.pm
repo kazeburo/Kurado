@@ -50,6 +50,12 @@ has 'service' => (
 
 __PACKAGE__->meta->make_immutable();
 
+sub has_plugin {
+    my $self = shift;
+    my $plugin = shift;
+    grep { $_->plugin eq $plugin } @{$self->plugins}
+}
+
 sub TO_JSON {
     my $self = shift;
     +{map { ($_ => $self->$_) } qw/address hostname comments roll metrics_config plugins/};

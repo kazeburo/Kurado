@@ -71,7 +71,6 @@ get '/' => [qw/fill_config/] => sub {
     });
 };
 
-
 get '/server' => [qw/fill_config get_server/] => sub {
     my ($self, $c)  = @_;
     my $time = time;
@@ -100,11 +99,12 @@ get '/server' => [qw/fill_config get_server/] => sub {
         $c->halt(400,join("\n",@{$result->messages}));
     }
 
+    my $s_width=400; 
     my $m_width=500; 
     my $l_width=1100;
     my %terms = (
         day => [{term=>"day",width=>$m_width},{term=>"week",width=>$m_width}],
-        month => [{term=>"day",width=>400},{term=>"week",width=>400},{term=>"month",width=>400},{term=>"year",width=>400}],
+        month => [{term=>"day",width=>400},{term=>"week",width=>$s_width},{term=>"month",width=>$s_width},{term=>"year",width=>$s_width}],
         "3days" => [{term=>"3days",width=>$l_width}],
         "8hours" => [{term=>"8hours",width=>$l_width}],
         "4hours" => [{term=>"4hours",width=>$l_width}],
@@ -115,6 +115,81 @@ get '/server' => [qw/fill_config get_server/] => sub {
     my $terms = $terms{$term};
     $c->render('server.tx', { terms => $terms, term => $term, result => $result });
 };
+
+
+get '/servers' => [qw/fill_config/] => sub {
+    my ($self, $c)  = @_;
+    my $time = time;
+    $time = $time - ($time%(60*15));
+    my $result = $c->req->validator([
+        'term' => {
+            default => 'day',
+            rule => [
+                [['CHOICE',qw/day week month year 3days 8hours 4hours 1hour custom/],'invalid drawing term'],
+            ],
+        },
+        'from' => {
+            default => timestr($time-3600*32),
+            rule => [
+                [sub{ HTTP::Date::str2time($_[1]) }, 'invalid From datetime'],
+            ],
+        },
+        'to' => {
+            default => timestr($time),
+            rule => [
+                [sub{ HTTP::Date::str2time($_[1]) }, 'invalid To datetime'],
+            ],
+        },
+        '@address' => {
+            rule => [
+                [['@SELECTED_NUM',1,500],'# of address should be in 1 to 500'],
+                ['@SELECTED_UNIQ','found duplicated address'],
+            ],
+        },
+    ]);
+    if ( $result->has_error ) {
+        $c->halt(400,join("\n",@{$result->messages}));
+    }
+
+    my @address = $result->valid('address');
+
+    # 2 = critical
+    # 1 = warn
+    # 0 = ok
+
+    my @hosts;
+    for my $address ( @address ) {
+        my $host = $self->config_loader->host_by_address($address);
+        if ( !$host ) {
+            next;
+        }
+        push @hosts, Kurado::Host->new(
+            config_loader => $self->config_loader,
+            host => $host,
+        );
+    }
+
+    my $s_width=420; 
+    my %terms = (
+        day => [{term=>"day",width=>$s_width}],
+        week => [{term=>"week",width=>$s_width}],
+        month => [{term=>"month",width=>$s_width}],
+        year => [{term=>"year",width=>$s_width}],
+        "3days" => [{term=>"3days",width=>$s_width}],
+        "8hours" => [{term=>"8hours",width=>$s_width}],
+        "4hours" => [{term=>"4hours",width=>$s_width}],
+        "1hour" => [{term=>"1hour",width=>$s_width}],
+        custom => [{term=>"custom",width=>$s_width}],
+    );
+    my $term = $result->valid('term');
+    my $terms = $terms{$term};
+    my @host_query = map { ("address",$_->address) } @hosts;
+    my $host_query = sub {
+        return [@host_query,@_];
+    };
+    $c->render('servers.tx', { terms => $terms, term => $term, result => $result, hosts=>\@hosts, host_query => $host_query });
+};
+
 
 sub timestr {
     my $time = shift;
@@ -175,6 +250,41 @@ get '/graph' => [qw/fill_config get_server get_plugin/] => sub {
         $c->halt(500,$@);
     }
     return $c->res;
+};
+
+router [qw/GET POST/] => '/api/host-status' => [qw/fill_config/] => sub {
+    my ($self, $c)  = @_;
+    my $result = $c->req->validator([
+        '@address' => {
+            rule => [
+                [['@SELECTED_NUM',1,500],'# of address should be in 1 to 500'],
+                ['@SELECTED_UNIQ','found duplicated address'],
+            ],
+        },
+    ]);
+    if ( $result->has_error ) {
+        $c->halt(400,join("\n",@{$result->messages}));
+    }
+    my @address = $result->valid('address');
+
+    # 2 = critical
+    # 1 = warn
+    # 0 = ok
+
+    my %result;
+    for my $address ( @address ) {
+        my $host = $self->config_loader->host_by_address($address);
+        if ( !$host ) {
+            $result{$address} = 2;
+            next;
+        }
+        my $host_obj = Kurado::Host->new(
+            config_loader => $self->config_loader,
+            host => $host,
+        );
+        $result{$address} = $host_obj->status;
+    }
+    $c->render_json(\%result);
 };
 
 1;

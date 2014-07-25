@@ -6,11 +6,18 @@
   <div class="container-fluid">
     <div class="row">
       <div class="col-sm-3">
-      <a href="/"><span class="subnav-logo"></span></a>
+        <h2 class="subnav-title">
+        <a href="/"><span class="subnav-logo"></span></a>
+        サーバ一覧
+        </h2>
       </div>
       <div class="col-sm-5">
-        <a id="uncheck-all" roll="button" class="btn btn-default btn-xs disabled" href="#"><span class="glyphicon glyphicon-unchecked"></span> チェックを外す</a>
-        <a id="open-checked" roll="button" class="btn btn-default btn-xs disabled" href="/"><span class="glyphicon glyphicon-new-window"></span> チェックしたホストを表示</a>
+        <div class="btn-toolbar" role="toolbar">
+          <div class="btn-group btn-group-xs">
+            <a id="uncheck-all" roll="button" class="btn btn-default disabled" href="#" title="チェックを外す"><span class="glyphicon glyphicon-unchecked"></span></a>
+            <a id="open-checked" roll="button" class="btn btn-default disabled" href="/"><span class="glyphicon glyphicon-new-window"></span> チェックしたサーバを表示</a>
+          </div>
+        </div>
       </div>
       <div class="col-sm-4" style="text-align: right;">
         <a href="/" class="subnav-brand">Kurado - Server Performance Metrics</a>
@@ -49,9 +56,6 @@
     <tr>
      <td>
       <span class="host-status glyphicon glyphicon-flash"></span>
-      <span class="glyphicon glyphicon-thumbs-up"></span>
-      <span class="glyphicon glyphicon-fire"></span>
-      <span class="glyphicon glyphicon-warning-sign"></span>
       <span class="host-checkbox"><input name="server-address" type="checkbox" value="<: $host.address :>" /></span>
       <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>" class="host-address"><: $host.address :></a>
       <span class="host-hostname"><: $host.hostname :></span>

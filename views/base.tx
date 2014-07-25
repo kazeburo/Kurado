@@ -81,19 +81,23 @@ $(function(){
         form.append(input);
       });
       $.post(
-        '/api/haserror',
+        '/api/host-status',
         form.serialize(),
         function (data) {
           $("a.host-address").slice(startnum, endnum).each(function(){
             var ip = $(this).text();
             var tag = $(this).parent().children("span.host-status");
+            tag.removeClass('glyphicon-flash');
             if ( data[ip] == 2 ) {
+              tag.addClass('glyphicon-warning-sign');
               tag.addClass("host-status-crit");
             }
             else if ( data[ip] == 1 ) {
+              tag.addClass('glyphicon-fire');
               tag.addClass("host-status-warn");
             }
             else {
+              tag.addClass('glyphicon-ok');
               tag.addClass("host-status-ok");
             }
           });

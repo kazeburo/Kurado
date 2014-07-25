@@ -26,6 +26,8 @@ has 'host' => (
 
 __PACKAGE__->meta->make_immutable();
 
+our $LAST_RECEIVED_EXPIRES = 300;
+
 sub config {
     $_[0]->config_loader->config;
 }
@@ -79,7 +81,7 @@ sub metrics_list {
             plugin => $plugin,
             address => $self->address,            
         );
-        if ( (!$last_received || $last_received < time - 300 ) && !$self->config_loader->has_fetch_plugin($plugin->plugin) ) {
+        if ( (!$last_received || $last_received < time - $LAST_RECEIVED_EXPIRES ) && !$self->config_loader->has_fetch_plugin($plugin->plugin) ) {
             $warn->{'__system__'} = 'Metrics are not updated in the last 5 minutes. This host or kurado_agent has been down';
             $warn->{'__system__'} .= '.last updated: ' . localtime($last_received) if $last_received;
         }
@@ -245,6 +247,30 @@ sub parse_fetched_metrics {
         $body .= join("\t", $self_ip, @ret[0,1,2])."\n";
     }
     $body;
+}
+
+    # 2 = critical
+    # 1 = warn
+    # 0 = ok
+
+sub status {
+    my $self = shift;
+
+    if ( my ($base_plugin) = $self->host->has_plugin('base') ) {
+        my $last_received = $self->storage->get_last_recieved(
+            plugin => $base_plugin,
+            address => $self->address,            
+        );
+        if ( !$last_received || $last_received < time - $LAST_RECEIVED_EXPIRES ) {
+            return 2;
+        }
+    }
+
+    my $has_warn = $self->storage->has_warn(
+        address => $self->address,
+    );
+        
+    return $has_warn ? 1 : 0;
 }
 
 1;
