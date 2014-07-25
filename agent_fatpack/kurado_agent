@@ -104,7 +104,7 @@ $fatpacked{"Kurado/Agent/Collector.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
                   }
                   $ret[0] = "$plugin_key.$ret[0]";
                   $ret[2] ||= $time;
-                  $body .= join("\t", @ret[0,1,2])."\n";
+                  $body .= join("\t", $self_ip, @ret[0,1,2])."\n";
               }
           };
           if ( $@ ) {
@@ -925,6 +925,10 @@ $fatpacked{"Kurado/ConfigLoader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n
       ];
   }
   
+  sub hosts {
+      $_[0]->{hosts};
+  }
+  
   sub host_by_address {
       my ($self,$address) = @_;
       return unless exists $self->{hosts}{$address};
@@ -934,6 +938,11 @@ $fatpacked{"Kurado/ConfigLoader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n
   sub plugins {
       my $self = shift;
       [ keys %{$self->{load_plugins}} ];
+  }
+  
+  sub has_fetch_plugin {
+      my ($self,$plugin) = @_;
+      exists $self->{load_plugins}{$plugin} && grep { $_ eq 'fetch' } @{$self->{load_plugins}{$plugin}};
   }
   
   sub dump {
@@ -1007,9 +1016,9 @@ $fatpacked{"Kurado/Host.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KUR
   use Kurado::Storage;
   use Kurado::RRD;
   
-  has 'config' => (
+  has 'config_loader' => (
       is => 'ro',
-      isa => 'Kurado::Config',
+      isa => 'Kurado::ConfigLoader',
       required => 1
   );
   
@@ -1020,6 +1029,12 @@ $fatpacked{"Kurado/Host.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KUR
   );
   
   __PACKAGE__->meta->make_immutable();
+  
+  our $LAST_RECEIVED_EXPIRES = 300;
+  
+  sub config {
+      $_[0]->config_loader->config;
+  }
   
   sub plugins {
       my $self = shift;
@@ -1065,6 +1080,15 @@ $fatpacked{"Kurado/Host.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KUR
               plugin => $plugin,
               address => $self->address,
           );
+          
+          my $last_received = $self->storage->get_last_recieved(
+              plugin => $plugin,
+              address => $self->address,            
+          );
+          if ( (!$last_received || $last_received < time - $LAST_RECEIVED_EXPIRES ) && !$self->config_loader->has_fetch_plugin($plugin->plugin) ) {
+              $warn->{'__system__'} = 'Metrics are not updated in the last 5 minutes. This host or kurado_agent has been down';
+              $warn->{'__system__'} .= '.last updated: ' . localtime($last_received) if $last_received;
+          }
   
           #run list
           my $metrics = eval {
@@ -1172,6 +1196,86 @@ $fatpacked{"Kurado/Host.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KUR
       return ($img,$data);
   }
   
+  
+  sub fetch_metrics {
+      state $rule = Data::Validator->new(
+          plugin => 'Kurado::Object::Plugin',
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+      my $body = '';
+      eval {
+          my ($stdout, $stderr, $success) = $self->compile->run(
+              host => $self->host,
+              plugin => $args->{plugin},
+              type => 'fetch',
+          );
+          die "$stderr\n" unless $success;
+          $body .= $self->parse_fetched_metrics(
+              plugin => $args->{plugin},
+              result => $stdout
+          );
+      };
+      if ( $@ ) {
+          my $warn = $@;
+          $warn =~ s!(?:\n|\r)!!g;
+          my $time = time;
+          my $plugin_key = $args->{plugin}->plugin_identifier_escaped;
+          my $self_ip = $self->host->address;
+          $body .= "$self_ip\t$plugin_key.warn.command\t$warn\t$time\n";
+      }
+      $body;
+  }
+  
+  sub parse_fetched_metrics {
+      state $rule = Data::Validator->new(
+          plugin => 'Kurado::Object::Plugin',
+          result => 'Str',
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+      my $time = time;
+      my $result = $args->{result};
+      my $plugin_key = $args->{plugin}->plugin_identifier_escaped;
+      my $self_ip = $self->host->address;
+      my $body = '';
+      for my $ret (split /\n/, $result) {
+          chomp($ret);
+          my @ret = split /\t/,$ret;
+          if ( $ret[0] !~ m!^(?:metrics|meta)\.! ) {
+              $ret[0] = "metrics.$ret[0]";
+          }
+          if ( $ret[0] =~ m!^metrics\.! && $ret[0] !~ m!\.(?:gauge|counter|derive|absolute)$! ) {
+              $ret[0] = "$ret[0].gauge";
+          }
+          $ret[0] = "$plugin_key.$ret[0]";
+          $ret[2] ||= $time;
+          $body .= join("\t", $self_ip, @ret[0,1,2])."\n";
+      }
+      $body;
+  }
+  
+      # 2 = critical
+      # 1 = warn
+      # 0 = ok
+  
+  sub status {
+      my $self = shift;
+  
+      if ( my ($base_plugin) = $self->host->has_plugin('base') ) {
+          my $last_received = $self->storage->get_last_recieved(
+              plugin => $base_plugin,
+              address => $self->address,            
+          );
+          if ( !$last_received || $last_received < time - $LAST_RECEIVED_EXPIRES ) {
+              return 2;
+          }
+      }
+  
+      my $has_warn = $self->storage->has_warn(
+          address => $self->address,
+      );
+          
+      return $has_warn ? 1 : 0;
+  }
   
   1;
   
@@ -1384,13 +1488,7 @@ $fatpacked{"Kurado/MQ.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURAD
               $next_tick = time + $interval;
               my $msg = $sub->();
               if ( ref $msg ) {
-                  $self->send_message(
-                      'RPUSH', $msg->[0], $msg->[1]
-                  ) or die "failed to send_message 'RPUSH': $!\n";
-                  my $res = $self->read_message();
-                  if ( !ref $res || !$res->success ) {
-                      die "failed to push msg: ".$res->error."\n";
-                  }
+                  $self->enqueue(@$msg);
               }
           }
       }
@@ -1403,7 +1501,7 @@ $fatpacked{"Kurado/MQ.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURAD
   
       my $queue_wait = int($self->{timeout}/2); # brocking time. half of timeout
       $queue_wait ||= 1;
-      my @req = ('BRPOP');
+      my @req = ('BLPOP');
       push @req, $_ for keys %callbacks;
       push @req, $queue_wait;
   
@@ -1411,7 +1509,7 @@ $fatpacked{"Kurado/MQ.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURAD
       $self->{stop_loop} = 0;
       while ( !$self->{stop_loop} ) {
           $self->send_message(@req) 
-              or die "failed to send_message 'BRPOP': $!\n";
+              or die "failed to send_message 'BLPOP': $!\n";
           my $res = $self->read_message();
           if ( !ref $res || !$res->success ) {
               die "failed to pop msg: ".$res->error."\n";
@@ -1429,6 +1527,17 @@ $fatpacked{"Kurado/MQ.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURAD
       }
   }
   
+  sub enqueue {
+      my ($self,$key,$val) = @_;
+      $self->send_message(
+          'RPUSH', $key, $val
+      ) or die "failed to send_message 'RPUSH': $!\n";
+      my $res = $self->read_message();
+      if ( !ref $res || !$res->success ) {
+          die "failed to push msg: ".$res->error."\n";
+      }
+      $res;
+  }
   
   # returns (positive) number of bytes read, or undef if the socket is to be closed
   sub read_timeout {
@@ -1559,6 +1668,7 @@ $fatpacked{"Kurado/Metrics.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
       my ($self,$message) = @_;
       my $rrd = Kurado::RRD->new(data_dir=>$self->config->data_dir);
       my $storage = Kurado::Storage->new(redis=>$self->config->redis);
+      my %uniq_address_plugin;
       foreach my $line ( split /\n/, $message ) {
           chomp $line;
           my $msg = eval {
@@ -1568,6 +1678,8 @@ $fatpacked{"Kurado/Metrics.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
               warnf("'$line' has error '$@'. ignore it");
               next;
           }
+          my $key = $msg->address ."\t".$msg->plugin->plugin_identifier;
+          $uniq_address_plugin{$key} = $msg;
           if ( $msg->metrics_type eq 'metrics' ) {
               # rrd update
               #debugf("rrd update %s",$msg);
@@ -1587,6 +1699,12 @@ $fatpacked{"Kurado/Metrics.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
               # update storage
               $storage->set_warn(msg => $msg);
           }
+      }
+  
+      for my $key (keys %uniq_address_plugin) {
+          $storage->set_last_recieved(
+              msg => $uniq_address_plugin{$key},
+          );        
       }
       
   }
@@ -1616,7 +1734,7 @@ $fatpacked{"Kurado/Metrics.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
           die "invalid rrd data type\n";
       }
       
-      my $obj_plugin = Kurado::Object::Plugin->new_from_identifier($plugin);
+      my $obj_plugin = Kurado::Object::Plugin->new_from_identifier(uri_unescape($plugin));
       return Kurado::Object::Msg->new(
           address => $address,
           plugin => $obj_plugin,
@@ -1683,6 +1801,12 @@ $fatpacked{"Kurado/Object/Host.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n"
   );
   
   __PACKAGE__->meta->make_immutable();
+  
+  sub has_plugin {
+      my $self = shift;
+      my $plugin = shift;
+      grep { $_->plugin eq $plugin } @{$self->plugins}
+  }
   
   sub TO_JSON {
       my $self = shift;
@@ -1781,6 +1905,7 @@ $fatpacked{"Kurado/Object/Plugin.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\
           arguments => \@args,
       );
   }
+  
   
   sub plugin_identifier {
       my $self = shift;
@@ -1986,6 +2111,31 @@ $fatpacked{"Kurado/Plugin.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'K
       my $hour = int( ( $uptime % 86400 ) / 3600 );
       my $min = int( ( ( $uptime % 86400 ) % 3600) / 60 );
       sprintf("up %d days, %2d:%02d", $day, $hour, $min);
+  }
+  
+  sub unit {
+      my $self = shift;
+      my $n = shift;
+      my($base, $unit);
+  
+      return $n unless $n =~ /^\d+$/;
+      if ($n >= 1073741824) {
+          $base = 1073741824;
+          $unit = 'GB';
+      } elsif ($n >= 1048576) {
+          $base = 1048576;
+          $unit = 'MB';
+      } elsif ($n >= 1024) {
+          $base = 1024;
+          $unit = 'KB';
+      } else {
+          $base = 1;
+          $unit = 'B';
+      }
+  
+      $n = sprintf '%.2f', $n/$base;
+      while($n =~ s/(.*\d)(\d\d\d)/$1,$2/){};
+      return $n.$unit;
   }
   
   sub render {
@@ -2325,6 +2475,7 @@ $fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
           '-t', 'n',
           '--', join(':', $args->{msg}->timestamp, $args->{msg}->value)
       );
+      debugf('rrd update %s %s', join(" ", @param), $path);
       eval {
           RRDs::update($path, @param);
           my $ERR=RRDs::error;
@@ -2335,7 +2486,7 @@ $fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
               die "$ERR\n" if $ERR;
           }
       };
-      die "rrd update failed: $@" if $@;
+      die "rrd update failed: $@\n" if $@;
       return 1;
   }
   
@@ -2434,7 +2585,7 @@ $fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
       my @opt = (
           $tmpfile,
           '-w', $args->{width},
-          '-h', 110,
+          '-h', 100,
           '-l', 0, #minimum
           '-u', 2, #maximum
           '-x', $xgrid,
@@ -2452,6 +2603,7 @@ $fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
           '--color', 'AXIS#'.uc('686868'),
           '--color', 'SHADEA#'.uc('313131'),
           '--color', 'SHADEB#'.uc('313131'),
+          '--color', 'ARROW#'.uc('f89407'),
           '--border', 1,
           '-t', $period_title,
           '--font', "AXIS:8:",
@@ -2462,19 +2614,19 @@ $fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
       eval {
           @graphv = RRDs::graph(map { Encode::encode_utf8($_) } @opt);
           my $ERR=RRDs::error;
-          die $ERR if $ERR;
+          die "$ERR\n" if $ERR;
       };
       if ( $@ ) {
           unlink($tmpfile);
-          die "draw graph failed: $@";
+          die "draw graph failed: $@\n";
       }
   
-      open( my $fh, '<:bytes', $tmpfile ) or die "cannot open graph tmpfile: $!";
+      open( my $fh, '<:bytes', $tmpfile ) or die "cannot open graph tmpfile: $!\n";
       local $/;
       my $graph_img = <$fh>;
       unlink($tmpfile);
   
-      die 'something wrong with image' unless $graph_img;
+      die "something wrong with image\n" unless $graph_img;
   
       return ($graph_img,\@graphv);
   }
@@ -2535,6 +2687,93 @@ $fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
   
 KURADO_RRD
 
+$fatpacked{"Kurado/ScoreBoard.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_SCOREBOARD';
+  package Kurado::ScoreBoard;
+  
+  use strict;
+  use warnings;
+  use utf8;
+  use File::Temp qw/tempdir/;
+  use File::Path qw/remove_tree/;
+  use Parallel::Scoreboard;
+  use Mouse;
+  use Log::Minimal;
+  
+  has 'config' => (
+      is => 'ro',
+      isa => 'Kurado::Config',
+      required => 1
+  );
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  sub BUILD {
+      my $self = shift;
+      $self->{scoreboard_dir} = tempdir( CLEANUP => 0, DIR => $self->config->data_dir );
+      $self->{sb} = Parallel::Scoreboard->new(base_dir=>$self->{scoreboard_dir});
+      $self->{pid} = $$;
+  }
+  
+  sub DEMOLISH {
+      my $self = shift;
+      if ( $self->{pid} == $$ && $self->{scoreboard_dir}) {
+          delete $self->{sb};
+          remove_tree(delete $self->{scoreboard_dir});
+      }
+  }
+  
+  sub idle {
+      my ($self,$caller) = @_;
+      ($caller) = caller unless $caller;
+      $self->{sb}->update(sprintf('%s %s %s',0,time,$caller));
+  }
+  
+  sub busy {
+      my $self = shift;
+      my ($caller) = caller;
+      $self->{sb}->update(sprintf('%s %s %s',1,time,$caller));
+      return Kurado::ScoreBoard::Guard->new(sub { $self->idle($caller) }) if defined wantarray;
+      1;
+  }
+  
+  sub kill_zombie {
+      my $self = shift;
+      my $threshold = shift;
+      $threshold ||= 30;
+      my $stats = $self->{sb}->read_all();
+      my $now = time ;
+      for my $pid ( keys %$stats) {
+          my($status,$time,$type) = split /\s+/, $stats->{$pid}, 3;
+          if ( $status == 1 && $now - $time > $threshold ) {
+              warnf 'kill zombie $type pid:%s', $type, $pid;
+              kill 'TERM', $pid;
+          }
+      }
+  }
+  
+  1;
+  
+  package Kurado::ScoreBoard::Guard;
+  
+  sub new {
+      my $class = shift;
+      my $cb = shift;
+      bless { cb => $cb, pid => $$ }, $class;
+  }
+  
+  sub DESTROY {
+      my $self = shift;
+      if ( defined $self->{pid} && $self->{pid} == $$ ) {
+          $self->{cb}->();
+      }
+  }
+  
+  1;
+  
+  
+  
+KURADO_SCOREBOARD
+
 $fatpacked{"Kurado/Storage.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_STORAGE';
   package Kurado::Storage;
   
@@ -2579,6 +2818,7 @@ $fatpacked{"Kurado/Storage.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
       );
   }
   
+  
   sub set_warn {
       state $rule = Data::Validator->new(
           msg => 'Kurado::Object::Msg'
@@ -2609,14 +2849,18 @@ $fatpacked{"Kurado/Storage.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
       my $key = join "/", $args->{type}, 
           $args->{msg}->address, $args->{msg}->plugin->plugin_identifier_escaped, $args->{msg}->key;
       my $connect = $self->connect;
-  
-      my $expire_at = time + $args->{expires};
+      my $now = time;
+      my $expire_at = $now + $args->{expires};
       my $value = (exists $args->{value}) ? $args->{value} : $args->{msg}->value;
       my @res;
       $connect->multi(sub {});
       $connect->zadd($set_key, $expire_at, $args->{msg}->key, sub {});
       $connect->set($key, $value, sub {});
       $connect->expireat($key, $expire_at, sub {});
+      if ( $args->{type} eq '__warn__' ) { #XXX
+          my $has_warn_key = join "/", '__warn__', $args->{msg}->address;
+          $connect->set($has_warn_key, $now, 'EX', $args->{expires}, sub {});
+      }
       $connect->exec(sub { @res = @_ });
       $connect->wait_all_responses;
       if ( my @err = grep { ! defined $_->[0] } @{$res[0]} ) {
@@ -2688,10 +2932,46 @@ $fatpacked{"Kurado/Storage.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
       my $time = time;
       $connect->zremrangebyscore($set_key, '-inf', '('.$time);
       my @keys = $connect->zrangebyscore($set_key, $time, '+inf');
-      return {} unless @keys;
+      if ( !@keys ) {
+          return {};
+      }
       my @values = $connect->mget(map { $set_key.'/'.$_  } @keys);
       my %ret = List::MoreUtils::pairwise { ($a, $b) } @keys, @values;
       return \%ret;
+  }
+  
+  sub set_last_recieved {
+      state $rule = Data::Validator->new(
+          msg => 'Kurado::Object::Msg',
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+  
+      my $value = time;
+      my $key = join "/", '__last_recieved__', $args->{msg}->address, $args->{msg}->plugin->plugin_identifier_escaped;
+      $self->connect->set($key, $value, 'EX', 365*86400);
+  }
+  
+  
+  sub get_last_recieved {
+      state $rule = Data::Validator->new(
+          plugin => 'Kurado::Object::Plugin',
+          address => 'Str',
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+  
+      my $value = time;
+      my $key = join "/", '__last_recieved__', $args->{address}, $args->{plugin}->plugin_identifier_escaped;
+      $self->connect->get($key);
+  }
+  
+  sub has_warn {
+      state $rule = Data::Validator->new(
+          address => 'Str',
+      )->with('Method');
+      my ($self, $args) = $rule->validate(@_);
+      my $key = join "/", '__warn__', $args->{address};
+      $self->connect->get($key);
+      
   }
   
   
@@ -2699,6 +2979,112 @@ $fatpacked{"Kurado/Storage.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   
 KURADO_STORAGE
+
+$fatpacked{"Kurado/TinyTCP.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_TINYTCP';
+  package Kurado::TinyTCP;
+  
+  use strict;
+  use warnings;
+  use POSIX qw(EINTR EAGAIN EWOULDBLOCK :sys_wait_h);
+  use IO::Socket qw(IPPROTO_TCP TCP_NODELAY);
+  use IO::Socket::INET;
+  use IO::Select;
+  use Time::HiRes qw//;
+  
+  our $READ_BYTES = 16 * 1024;
+  
+  sub new {
+      my $class = shift;
+      my %args = ref $_ ? %{$_[0]} : @_;
+      %args = (
+          server => '127.0.0.1:6379',
+          timeout => 10,
+          %args,
+      );
+      my $server = shift;
+      my $self = bless \%args, $class;
+      $self->connect;
+      $self;
+  }
+  
+  sub connect {
+      my $self = shift;
+      return $self->{sock} if $self->{sock};
+      my $socket = IO::Socket::INET->new(
+          PeerAddr => $self->{server},
+          Timeout => $self->{timeout},
+      ) or die "Socket connect failed: $!\n";
+      $socket->blocking(0);
+      $socket->setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
+          or die "setsockopt(TCP_NODELAY) failed:$!\n";
+      $self->{sock} = $socket;
+      $socket;
+  }
+  
+  sub read : method {
+      my ($self, $timeout) = @_;
+      $timeout ||= $self->{timeout};
+      my $timeout_at = Time::HiRes::time + $timeout;
+      my $buf = '';
+      my $n = $self->do_io(undef, \$buf, $READ_BYTES, 0, $timeout_at);
+      die $! != 0 ? "$!\n" : "timeout\n" if !defined $n;
+      return $buf;
+  }
+  
+  sub write : method {
+      my ($self, $buf, $timeout) = @_;
+      $timeout ||= $self->{timeout};
+      my $timeout_at = Time::HiRes::time + $timeout;
+      my $off = 0;
+      while (my $len = length($buf) - $off) {
+          my $n = $self->do_io(1, $buf, $len, $off, $timeout_at);
+          die $! != 0 ? "$!\n" : "timeout\n" if !defined $n;
+          $off += $n;
+      }
+      return length $buf;    
+  }
+  
+  
+  
+  # returns value returned by $cb, or undef on timeout or network error
+  sub do_io {
+      my ($self, $is_write, $buf, $len, $off, $timeout_at) = @_;
+      my $sock = $self->{sock};
+      my $ret;
+   DO_READWRITE:
+      # try to do the IO
+      if ($is_write) {
+          $ret = syswrite $sock, $buf, $len, $off
+              and return $ret;
+      } else {
+          $ret = sysread $sock, $$buf, $len, $off
+              and return $ret;
+      }
+      unless ((! defined($ret)
+                   && ($! == EINTR || $! == EAGAIN || $! == EWOULDBLOCK))) {
+          return;
+      }
+      # wait for data
+   DO_SELECT:
+      while (1) {
+          my $timeout = $timeout_at - Time::HiRes::time;
+          return if $timeout <= 0;
+          my ($rfd, $wfd);
+          my $efd = '';
+          vec($efd, fileno($sock), 1) = 1;
+          if ($is_write) {
+              ($rfd, $wfd) = ('', $efd);
+          } else {
+              ($rfd, $wfd) = ($efd, '');
+          }
+          my $nfound = select($rfd, $wfd, $efd, $timeout);
+          last if $nfound;
+      }
+      goto DO_READWRITE;
+  }
+  
+  1;
+KURADO_TINYTCP
 
 $fatpacked{"Kurado/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_UTIL';
   package Kurado::Util;
@@ -2877,7 +3263,7 @@ $fatpacked{"Kurado/Web.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
           my $host = $self->config_loader->host_by_address($address);
           $c->halt('404') unless $host;        
           $c->stash->{host} = Kurado::Host->new(
-              config => $self->config_loader->config,
+              config_loader => $self->config_loader,
               host => $host,
           );
           $app->($self, $c);
@@ -2914,7 +3300,6 @@ $fatpacked{"Kurado/Web.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
       });
   };
   
-  
   get '/server' => [qw/fill_config get_server/] => sub {
       my ($self, $c)  = @_;
       my $time = time;
@@ -2943,11 +3328,12 @@ $fatpacked{"Kurado/Web.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
           $c->halt(400,join("\n",@{$result->messages}));
       }
   
+      my $s_width=400; 
       my $m_width=500; 
       my $l_width=1100;
       my %terms = (
           day => [{term=>"day",width=>$m_width},{term=>"week",width=>$m_width}],
-          month => [{term=>"day",width=>400},{term=>"week",width=>400},{term=>"month",width=>400},{term=>"year",width=>400}],
+          month => [{term=>"day",width=>400},{term=>"week",width=>$s_width},{term=>"month",width=>$s_width},{term=>"year",width=>$s_width}],
           "3days" => [{term=>"3days",width=>$l_width}],
           "8hours" => [{term=>"8hours",width=>$l_width}],
           "4hours" => [{term=>"4hours",width=>$l_width}],
@@ -2958,6 +3344,81 @@ $fatpacked{"Kurado/Web.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
       my $terms = $terms{$term};
       $c->render('server.tx', { terms => $terms, term => $term, result => $result });
   };
+  
+  
+  get '/servers' => [qw/fill_config/] => sub {
+      my ($self, $c)  = @_;
+      my $time = time;
+      $time = $time - ($time%(60*15));
+      my $result = $c->req->validator([
+          'term' => {
+              default => 'day',
+              rule => [
+                  [['CHOICE',qw/day week month year 3days 8hours 4hours 1hour custom/],'invalid drawing term'],
+              ],
+          },
+          'from' => {
+              default => timestr($time-3600*32),
+              rule => [
+                  [sub{ HTTP::Date::str2time($_[1]) }, 'invalid From datetime'],
+              ],
+          },
+          'to' => {
+              default => timestr($time),
+              rule => [
+                  [sub{ HTTP::Date::str2time($_[1]) }, 'invalid To datetime'],
+              ],
+          },
+          '@address' => {
+              rule => [
+                  [['@SELECTED_NUM',1,500],'# of address should be in 1 to 500'],
+                  ['@SELECTED_UNIQ','found duplicated address'],
+              ],
+          },
+      ]);
+      if ( $result->has_error ) {
+          $c->halt(400,join("\n",@{$result->messages}));
+      }
+  
+      my @address = $result->valid('address');
+  
+      # 2 = critical
+      # 1 = warn
+      # 0 = ok
+  
+      my @hosts;
+      for my $address ( @address ) {
+          my $host = $self->config_loader->host_by_address($address);
+          if ( !$host ) {
+              next;
+          }
+          push @hosts, Kurado::Host->new(
+              config_loader => $self->config_loader,
+              host => $host,
+          );
+      }
+  
+      my $s_width=420; 
+      my %terms = (
+          day => [{term=>"day",width=>$s_width}],
+          week => [{term=>"week",width=>$s_width}],
+          month => [{term=>"month",width=>$s_width}],
+          year => [{term=>"year",width=>$s_width}],
+          "3days" => [{term=>"3days",width=>$s_width}],
+          "8hours" => [{term=>"8hours",width=>$s_width}],
+          "4hours" => [{term=>"4hours",width=>$s_width}],
+          "1hour" => [{term=>"1hour",width=>$s_width}],
+          custom => [{term=>"custom",width=>$s_width}],
+      );
+      my $term = $result->valid('term');
+      my $terms = $terms{$term};
+      my @host_query = map { ("address",$_->address) } @hosts;
+      my $host_query = sub {
+          return [@host_query,@_];
+      };
+      $c->render('servers.tx', { terms => $terms, term => $term, result => $result, hosts=>\@hosts, host_query => $host_query });
+  };
+  
   
   sub timestr {
       my $time = shift;
@@ -3002,18 +3463,57 @@ $fatpacked{"Kurado/Web.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
       if ( $result->has_error ) {
           $c->halt(400,join("\n",@{$result->messages}));
       }
-      
-      my ($img,$data) = $c->stash->{host}->metrics_graph(
-          plugin => $c->stash->{plugin},
-          graph => $result->valid('graph'),
-          term => $result->valid('term'),
-          from => $result->valid('from'),
-          to => $result->valid('to'),
-          width => $result->valid('width'),
-      );
-      $c->res->content_type('text/plain');
-      $c->res->body($img);
+      eval {
+          my ($img,$data) = $c->stash->{host}->metrics_graph(
+              plugin => $c->stash->{plugin},
+              graph => $result->valid('graph'),
+              term => $result->valid('term'),
+              from => $result->valid('from'),
+              to => $result->valid('to'),
+              width => $result->valid('width'),
+          );
+          $c->res->content_type('text/plain');
+          $c->res->body($img);
+      };
+      if ($@) {
+          $c->halt(500,$@);
+      }
       return $c->res;
+  };
+  
+  router [qw/GET POST/] => '/api/host-status' => [qw/fill_config/] => sub {
+      my ($self, $c)  = @_;
+      my $result = $c->req->validator([
+          '@address' => {
+              rule => [
+                  [['@SELECTED_NUM',1,500],'# of address should be in 1 to 500'],
+                  ['@SELECTED_UNIQ','found duplicated address'],
+              ],
+          },
+      ]);
+      if ( $result->has_error ) {
+          $c->halt(400,join("\n",@{$result->messages}));
+      }
+      my @address = $result->valid('address');
+  
+      # 2 = critical
+      # 1 = warn
+      # 0 = ok
+  
+      my %result;
+      for my $address ( @address ) {
+          my $host = $self->config_loader->host_by_address($address);
+          if ( !$host ) {
+              $result{$address} = 2;
+              next;
+          }
+          my $host_obj = Kurado::Host->new(
+              config_loader => $self->config_loader,
+              host => $host,
+          );
+          $result{$address} = $host_obj->status;
+      }
+      $c->render_json(\%result);
   };
   
   1;
@@ -3031,7 +3531,10 @@ $fatpacked{"Kurado/Worker.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'K
   use Plack::Loader;
   use Plack::Builder;
   
+  use Kurado::ScoreBoard;
   use Kurado::Worker::Updater;
+  use Kurado::Worker::TimeMage;
+  use Kurado::Worker::Fetcher;
   use Kurado::Web;
   
   has 'config_loader' => (
@@ -3051,11 +3554,25 @@ $fatpacked{"Kurado/Worker.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'K
   
   sub run {
       my $self = shift;
+      
+      my $sb = Kurado::ScoreBoard->new(
+          config => $self->config_loader->config,
+      );
       my $proclet = Proclet->new(
           err_respawn_interval => 3,
+          exec_notice => 0,
       );
       my $updater = Kurado::Worker::Updater->new(
-          config => $self->config_loader->config
+          scoreboard => $sb,
+          config_loader => $self->config_loader
+      );
+      my $fetcher = Kurado::Worker::Fetcher->new(
+          scoreboard => $sb,
+          config_loader => $self->config_loader
+      );
+  
+      my $timemage = Kurado::Worker::TimeMage->new(
+          config_loader => $self->config_loader
       );
   
       $proclet->service(
@@ -3064,11 +3581,56 @@ $fatpacked{"Kurado/Worker.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'K
                   my ( $time, $type, $message, $trace,$raw_message) = @_;
                   warn "[$type] $message at $trace\n";
               };
+              local $0 = 'Kurado::Worker::Updater';
               $updater->run();
           },
           worker => 1,
           tag => 'updater'
       );
+  
+      $proclet->service(
+          code => sub {
+              local $Log::Minimal::PRINT = sub {
+                  my ( $time, $type, $message, $trace,$raw_message) = @_;
+                  warn "[$type] $message at $trace\n";
+              };
+              local $0 = 'Kurado::Worker::Fetcher';
+              $fetcher->run();
+          },
+          worker => 1,
+          tag => 'fetcher'
+      );
+  
+      $proclet->service(
+          code => sub {
+              local $Log::Minimal::PRINT = sub {
+                  my ( $time, $type, $message, $trace,$raw_message) = @_;
+                  warn "[$type] $message at $trace\n";
+              };
+              local $0 = 'Kurado::Worker::TimeMage';
+              $timemage->run();
+          },
+          worker => 1,
+          tag => 'timemage',
+          every => '* * * * *', # every minutes
+      );
+  
+      $proclet->service(
+          code => sub {
+              local $Log::Minimal::PRINT = sub {
+                  my ( $time, $type, $message, $trace,$raw_message) = @_;
+                  warn "[$type] $message at $trace\n";
+              };
+              local $0 = 'Kurado::Worker::KillZombie';
+              while(1) {
+                  $sb->kill_zombie(30);
+                  select undef, undef, undef, 3;
+              }
+          },
+          worker => 1,
+          tag => 'watcher'
+      );
+  
   
       my $app = Kurado::Web->new(
           config_loader => $self->config_loader,
@@ -3088,7 +3650,7 @@ $fatpacked{"Kurado/Worker.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'K
                   my ( $time, $type, $message, $trace,$raw_message) = @_;
                   warn "[$type] $message at $trace\n";
               };
-              
+              local $0 = 'Kurado:Web';
               my $loader = Plack::Loader->load(
                   'Starlet',
                   port => 5434,
@@ -3107,6 +3669,130 @@ $fatpacked{"Kurado/Worker.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'K
   
 KURADO_WORKER
 
+$fatpacked{"Kurado/Worker/Fetcher.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_WORKER_FETCHER';
+  package Kurado::Worker::Fetcher;
+  
+  use strict;
+  use warnings;
+  use Mouse;
+  use Parallel::Prefork;
+  use Log::Minimal;
+  
+  use Kurado::MQ;
+  use Kurado::Host;
+  
+  has 'config_loader' => (
+      is => 'ro',
+      isa => 'Kurado::ConfigLoader',
+      required => 1
+  );
+  
+  has 'scoreboard' => (
+      is => 'ro',
+      isa => 'Kurado::ScoreBoard',
+      required => 1
+  );
+  
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  sub config {
+      $_[0]->config_loader->config;
+  }
+  
+  sub run {
+      my $self = shift;
+      my $pm = Parallel::Prefork->new({
+          max_workers  => $self->config->fetch_worker,
+          trap_signals => {
+              TERM => 'TERM',
+              HUP  => 'TERM',
+          }
+      });
+      while ($pm->signal_received ne 'TERM') {
+          $pm->start(sub{
+              my $mq = Kurado::MQ->new(server => $self->config->redis);
+              local $SIG{TERM} = sub {
+                  $mq->{stop_loop} = 1;
+              };
+              $self->scoreboard->idle;
+              my $process = 0;
+              $mq->subscribe(
+                  "kurado-fetch" => sub {
+                      my ($topic, $message) = @_;
+                      my $gurad = $self->scoreboard->busy;
+                      my ($address, $plugin_identifier) = split /\t/, $message, 2;
+                      my $host = $self->config_loader->host_by_address($address);
+                      if (!$host) {
+                          warnf 'address"%s is not found. skip it', $address;
+                          return;
+                      }
+                      $process++;
+                      $mq->{stop_loop} =  1 if $process > 500;
+                      my $plugin = Kurado::Object::Plugin->new_from_identifier($plugin_identifier);
+                      my $host_obj = Kurado::Host->new(
+                          config_loader => $self->config_loader,
+                          host => $host,
+                      );
+                      my $metrics = $host_obj->fetch_metrics(plugin => $plugin);
+                      $mq->enqueue('kurado-update',$metrics);
+                  },
+              );
+          });
+      }
+      $pm->wait_all_children();
+  }
+  
+  
+  
+  1;
+  
+  
+KURADO_WORKER_FETCHER
+
+$fatpacked{"Kurado/Worker/TimeMage.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_WORKER_TIMEMAGE';
+  package Kurado::Worker::TimeMage;
+  
+  use strict;
+  use warnings;
+  use Mouse;
+  use Parallel::Prefork;
+  use Log::Minimal;
+  
+  use Kurado::MQ;
+  
+  has 'config_loader' => (
+      is => 'ro',
+      isa => 'Kurado::ConfigLoader',
+      required => 1
+  );
+  
+  __PACKAGE__->meta->make_immutable();
+  
+  sub run {
+      my $self = shift;
+      my $hosts = $self->config_loader->hosts;
+      my $mq = Kurado::MQ->new( server => $self->config_loader->config->redis );
+      for my $adrs ( keys %$hosts ) {
+          my $host = $hosts->{$adrs};
+          for my $plugin ( @{$host->plugins} ) {
+              next unless $self->config_loader->has_fetch_plugin($plugin->plugin);
+              my $msg = $host->address ."\t". $plugin->plugin_identifier;
+              debugf("enqueue %s", $msg);
+              $mq->enqueue('kurado-fetch',$msg);
+          }
+      }
+  }
+  
+  
+  1;
+  
+  
+  
+  
+  
+KURADO_WORKER_TIMEMAGE
+
 $fatpacked{"Kurado/Worker/Updater.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURADO_WORKER_UPDATER';
   package Kurado::Worker::Updater;
   
@@ -3119,13 +3805,24 @@ $fatpacked{"Kurado/Worker/Updater.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"
   use Kurado::MQ;
   use Kurado::Metrics;
   
-  has 'config' => (
+  has 'config_loader' => (
       is => 'ro',
-      isa => 'Kurado::Config',
+      isa => 'Kurado::ConfigLoader',
       required => 1
   );
   
+  has 'scoreboard' => (
+      is => 'ro',
+      isa => 'Kurado::ScoreBoard',
+      required => 1
+  );
+  
+  
   __PACKAGE__->meta->make_immutable();
+  
+  sub config {
+      $_[0]->config_loader->config
+  }
   
   sub run {
       my $self = shift;
@@ -3143,9 +3840,11 @@ $fatpacked{"Kurado/Worker/Updater.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"
               local $SIG{TERM} = sub {
                   $mq->{stop_loop} = 1;
               };
+              $self->scoreboard->idle;
               $mq->subscribe(
                   "kurado-update" => sub {
                       my ($topic, $message) = @_;
+                      my $gurad = $self->scoreboard->busy;
                       $metrics->process_message($message);
                   },
               );
