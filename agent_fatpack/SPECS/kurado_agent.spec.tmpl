@@ -27,6 +27,8 @@ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d
 install -m 755 %{SOURCE2} $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/kurado_agent
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig
 install -m 755 %{SOURCE3} $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/kurado_agent
+mkdir -p $RPM_BUILD_ROOT/usr/local/bin
+install -m 755 %{SOURCE0} $RPM_BUILD_ROOT/usr/local/bin/kurado_agent
 
 %post
 /sbin/chkconfig --add httpd_proxy
@@ -34,6 +36,7 @@ install -m 755 %{SOURCE3} $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/kurado_agent
 %files
 %defattr(-,root,root,-)
 %dir %{_sysconfdir}/kurado_agent
+/usr/local/bin/kurado_agent
 %config %{_sysconfdir}/init.d/kurado_agent
 %config(noreplace) %{_sysconfdir}/sysconfig/kurado_agent
 %config(noreplace) %{_sysconfdir}/logrotate.d/kurado_agent
