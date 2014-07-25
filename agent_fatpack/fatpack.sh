@@ -28,4 +28,6 @@ sed -i "s/<VERSION>/$D_VER/" agent_fatpack/SPECS/kurado_agent.spec
 sed -i "s/<RELEASE>/$D_REL/" agent_fatpack/SPECS/kurado_agent.spec
 head agent_fatpack/SPECS/kurado_agent.spec
 rpmbuild -bb agent_fatpack/SPECS/kurado_agent.spec
-
+rm -f agent_fatpack/SPECS/kurado_agent.spec
+mv agent_fatpack/RPMS/noarch/kurado_agent-$D_VER-$D_REL.noarch.rpm \
+     agent_fatpack/RPMS/noarch/kurado_agent-latest.noarch.rpm
