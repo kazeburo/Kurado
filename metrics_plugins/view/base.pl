@@ -159,53 +159,43 @@ CDEF:my11r=my11,total,/,100,*,0,100,LIMIT
 AREA:my1r#a9a9a9:User   
 GPRINT:my1r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my1r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my1r:MAX:Max\:%5.1lf[%%]
-GPRINT:my1r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my1r:MAX:Max\:%5.1lf[%%]\l
 STACK:my2r#000080:Nice   
 GPRINT:my2r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my2r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my2r:MAX:Max\:%5.1lf[%%]
-GPRINT:my2r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my2r:MAX:Max\:%5.1lf[%%]\l
 STACK:my3r#008080:System 
 GPRINT:my3r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my3r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my3r:MAX:Max\:%5.1lf[%%]
-GPRINT:my3r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my3r:MAX:Max\:%5.1lf[%%]\l
 STACK:my4r#800080:Idle   
 GPRINT:my4r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my4r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my4r:MAX:Max\:%5.1lf[%%]
-GPRINT:my4r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my4r:MAX:Max\:%5.1lf[%%]\l
 STACK:my5r#f00000:Wait   
 GPRINT:my5r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my5r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my5r:MAX:Max\:%5.1lf[%%]
-GPRINT:my5r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my5r:MAX:Max\:%5.1lf[%%]\l
 STACK:my7r#F39034:Intr   
 GPRINT:my7r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my7r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my7r:MAX:Max\:%5.1lf[%%]
-GPRINT:my7r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my7r:MAX:Max\:%5.1lf[%%]\l
 STACK:my8r#3D282A:SoftIRQ
 GPRINT:my8r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my8r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my8r:MAX:Max\:%5.1lf[%%]
-GPRINT:my8r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my8r:MAX:Max\:%5.1lf[%%]\l
 STACK:my9r#EBF906:Steal  
 GPRINT:my9r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my9r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my9r:MAX:Max\:%5.1lf[%%]
-GPRINT:my9r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my9r:MAX:Max\:%5.1lf[%%]\l
 STACK:my10r#81F781:Guest  
 GPRINT:my10r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my10r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my10r:MAX:Max\:%5.1lf[%%]
-GPRINT:my10r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my10r:MAX:Max\:%5.1lf[%%]\l
 STACK:my11r#8181F7:GstNice
 GPRINT:my11r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my11r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my11r:MAX:Max\:%5.1lf[%%]
-GPRINT:my11r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my11r:MAX:Max\:%5.1lf[%%]\l
 
 @@ loadavg-1
 Load Average
@@ -214,8 +204,7 @@ DEF:my2=<%RRD_FOR processors.gauge %>:n:AVERAGE
 AREA:my1#00C000:Load Average
 GPRINT:my1:LAST:Cur\:%6.2lf
 GPRINT:my1:AVERAGE:Ave\:%6.2lf
-GPRINT:my1:MAX:Max\:%6.2lf
-GPRINT:my1:MIN:Min\:%6.2lf\l
+GPRINT:my1:MAX:Max\:%6.2lf\l
 LINE1:my2#ff3e00:CPU Core    :dashes=3,6
 GPRINT:my2:LAST:Cur\:%6.0lf\l
 
@@ -237,48 +226,47 @@ DEF:swap-used=<%RRD_FOR memory-swap-used.gauge %>:n:AVERAGE
 DEF:swap-total=<%RRD_FOR memory-swap-total.gauge %>:n:AVERAGE
 # used
 AREA:used#ffdd67:used      
-GPRINT:used:LAST:Cur\:%6.2lf%sByte
-GPRINT:used:AVERAGE:Ave\:%6.2lf%sByte
-GPRINT:used:MAX:Max\:%6.2lf%sByte\l
+GPRINT:used:LAST:Cur\:%6.1lf%sByte
+GPRINT:used:AVERAGE:Ave\:%6.1lf%sByte
+GPRINT:used:MAX:Max\:%6.1lf%sByte\l
 # buffer
 STACK:buffers#8a8ae6:buffers   
-GPRINT:buffers:LAST:Cur\:%6.2lf%sByte
-GPRINT:buffers:AVERAGE:Ave\:%6.2lf%sByte
-GPRINT:buffers:MAX:Max\:%6.2lf%sByte\l
+GPRINT:buffers:LAST:Cur\:%6.1lf%sByte
+GPRINT:buffers:AVERAGE:Ave\:%6.1lf%sByte
+GPRINT:buffers:MAX:Max\:%6.1lf%sByte\l
 # cached
 STACK:cached#6060e0:cached    
-GPRINT:cached:LAST:Cur\:%6.2lf%sByte
-GPRINT:cached:AVERAGE:Ave\:%6.2lf%sByte
-GPRINT:cached:MAX:Max\:%6.2lf%sByte\l
+GPRINT:cached:LAST:Cur\:%6.1lf%sByte
+GPRINT:cached:AVERAGE:Ave\:%6.1lf%sByte
+GPRINT:cached:MAX:Max\:%6.1lf%sByte\l
 # avail real
 STACK:free#80e080:avail real
-GPRINT:free:LAST:Cur\:%6.2lf%sByte
-GPRINT:free:AVERAGE:Ave\:%6.2lf%sByte
-GPRINT:free:MAX:Max\:%6.2lf%sByte\l
+GPRINT:free:LAST:Cur\:%6.1lf%sByte
+GPRINT:free:AVERAGE:Ave\:%6.1lf%sByte
+GPRINT:free:MAX:Max\:%6.1lf%sByte\l
 # used swap
 LINE2:swap-used#a51800:used  swap
-GPRINT:swap-used:LAST:Cur\:%6.2lf%sByte
-GPRINT:swap-used:AVERAGE:Ave\:%6.2lf%sByte
-GPRINT:swap-used:MAX:Max\:%6.2lf%sByte\l
+GPRINT:swap-used:LAST:Cur\:%6.1lf%sByte
+GPRINT:swap-used:AVERAGE:Ave\:%6.1lf%sByte
+GPRINT:swap-used:MAX:Max\:%6.1lf%sByte\l
 # total swap
 LINE1:swap-total#d77c79:total swap
-GPRINT:swap-total:LAST:Cur\:%6.2lf%sByte
-GPRINT:swap-total:AVERAGE:Ave\:%6.2lf%sByte
-GPRINT:swap-total:MAX:Max\:%6.2lf%sByte\l
+GPRINT:swap-total:LAST:Cur\:%6.1lf%sByte
+GPRINT:swap-total:AVERAGE:Ave\:%6.1lf%sByte
+GPRINT:swap-total:MAX:Max\:%6.1lf%sByte\l
 # total real
 LINE2:total#005493:total real
-GPRINT:total:LAST:Cur\:%6.2lf%sByte
-GPRINT:total:AVERAGE:Ave\:%6.2lf%sByte
-GPRINT:total:MAX:Max\:%6.2lf%sByte\l
+GPRINT:total:LAST:Cur\:%6.1lf%sByte
+GPRINT:total:AVERAGE:Ave\:%6.1lf%sByte
+GPRINT:total:MAX:Max\:%6.1lf%sByte\l
 
 @@ tcp-established
 TCP Established
 DEF:tcpestab=<%RRD_FOR tcp-established.gauge %>:n:AVERAGE
 AREA:tcpestab#00C000:Established
-GPRINT:tcpestab:LAST:Cur\:%6.0lf
-GPRINT:tcpestab:AVERAGE:Ave\:%6.0lf
-GPRINT:tcpestab:MAX:Max\:%6.0lf
-GPRINT:tcpestab:MIN:Min\:%6.0lf\l
+GPRINT:tcpestab:LAST:Cur\:%6.1lf
+GPRINT:tcpestab:AVERAGE:Ave\:%6.1lf
+GPRINT:tcpestab:MAX:Max\:%6.1lf\l
 
 @@ disk-io-byte
 DiskIO
@@ -288,16 +276,14 @@ DEF:my1a=<%RRD_FOR disk-io-<?= $device ?>-read-sectors.derive %>:n:AVERAGE
 DEF:my2a=<%RRD_FOR disk-io-<?= $device ?>-write-sectors.derive %>:n:AVERAGE
 CDEF:my1=my1a,0,200000000,LIMIT
 CDEF:my2=my2a,0,200000000,LIMIT
-AREA:my1#00C000:Read(B/S)  
-GPRINT:my1:LAST:Cur\: %4.1lf%s
-GPRINT:my1:AVERAGE:Ave\: %4.1lf%s
-GPRINT:my1:MAX:Max\: %4.1lf%s
-GPRINT:my1:MIN:Min\: %4.1lf%s\l
-STACK:my2#0000C0:Write(B/S) 
-GPRINT:my2:LAST:Cur\: %4.1lf%s
-GPRINT:my2:AVERAGE:Ave\: %4.1lf%s
-GPRINT:my2:MAX:Max\: %4.1lf%s
-GPRINT:my2:MIN:Min\: %4.1lf%s\l
+AREA:my1#00C000:Read/s 
+GPRINT:my1:LAST:Cur\:%6.1lf%sByte
+GPRINT:my1:AVERAGE:Ave\:%6.1lf%sByte
+GPRINT:my1:MAX:Max\:%6.1lf%sByte\l
+STACK:my2#0000C0:Write/s
+GPRINT:my2:LAST:Cur\:%6.1lf%sByte
+GPRINT:my2:AVERAGE:Ave\:%6.1lf%sByte
+GPRINT:my2:MAX:Max\:%6.1lf%sByte\l
 
 @@ disk-io-count
 DiskIO Count
@@ -306,15 +292,13 @@ DEF:my2a=<%RRD_FOR disk-io-<?= $device ?>-write-ios.derive %>:n:AVERAGE
 CDEF:my1=my1a,0,1000000,LIMIT
 CDEF:my2=my2a,0,1000000,LIMIT
 AREA:my1#c0c0c0:Read  
-GPRINT:my1:LAST:Cur\: %4.1lf%s
-GPRINT:my1:AVERAGE:Ave\: %4.1lf%s
-GPRINT:my1:MAX:Max\: %4.1lf%s
-GPRINT:my1:MIN:Min\: %4.1lf%s\l
+GPRINT:my1:LAST:Cur\:%6.1lf%s
+GPRINT:my1:AVERAGE:Ave\:%6.1lf%s
+GPRINT:my1:MAX:Max\:%6.1lf%s\l
 STACK:my2#800080:Write 
-GPRINT:my2:LAST:Cur\: %4.1lf%s
-GPRINT:my2:AVERAGE:Ave\: %4.1lf%s
-GPRINT:my2:MAX:Max\: %4.1lf%s
-GPRINT:my2:MIN:Min\: %4.1lf%s\l
+GPRINT:my2:LAST:Cur\:%6.1lf%s
+GPRINT:my2:AVERAGE:Ave\:%6.1lf%s
+GPRINT:my2:MAX:Max\:%6.1lf%s\l
 
 @@ disk-usage
 Disk Usage
@@ -329,7 +313,7 @@ VDEF:slope=used_b,LSLSLOPE
 VDEF:cons=used_b,LSLINT
 CDEF:lsl2=used_b,POP,slope,COUNT,*,cons,+
 AREA:total#ff99ff:Total
-GPRINT:total:LAST:Cur\:%4.2lf%sB
+GPRINT:total:LAST:Cur\:%5.2lf%sB
 AREA:used_b#cc00ff:Used 
-GPRINT:used_b:LAST:Cur\:%4.2lf%sB\l
+GPRINT:used_b:LAST:Cur\:%5.2lf%sB\l
 LINE1:lsl2#00A000:Prediction:dashes=3,6

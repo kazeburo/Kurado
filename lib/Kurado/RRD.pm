@@ -126,16 +126,16 @@ sub graph {
         $end = $to_time;
         my $diff = $to_time - $from_time;
         if ( $diff < 3 * 60 * 60 ) {
-            $xgrid = 'MINUTE:10:MINUTE:20:MINUTE:10:0:%M';
+            $xgrid = 'MINUTE:10:MINUTE:30:MINUTE:30:0:%H:%M';
         }
         elsif ( $diff < 4 * 24 * 60 * 60 ) {
-            $xgrid = 'HOUR:6:DAY:1:HOUR:6:0:%H';
+            $xgrid = 'HOUR:6:DAY:1:HOUR:6:0:%H:%M';
         }
         elsif ( $diff < 14 * 24 * 60 * 60) {
-            $xgrid = 'DAY:1:DAY:1:DAY:2:86400:%m/%d';
+            $xgrid = 'DAY:1:DAY:7:DAY:2:0:%m/%d';
         }
         elsif ( $diff < 45 * 24 * 60 * 60) {
-            $xgrid = 'DAY:1:WEEK:1:WEEK:1:0:%F';
+            $xgrid = 'DAY:1:WEEK:1:WEEK:1:0:%m/%d';
         }
         else {
             $xgrid = 'WEEK:1:MONTH:1:MONTH:1:2592000:%b';
@@ -144,12 +144,12 @@ sub graph {
     elsif ( $args->{term} eq 'year' ) {
         $period_title = 'Year';
         $period = -1 * 60 * 60 * 24 * 400;
-        $xgrid = 'WEEK:1:MONTH:1:MONTH:1:2592000:%b'
+        $xgrid = 'MONTH:1:MONTH:1:MONTH:1:2592000:%b'
     }
     elsif ( $args->{term} eq 'month' ) {
         $period_title = 'Month';
         $period = -1 * 60 * 60 * 24 * 35;
-        $xgrid = 'DAY:1:WEEK:1:WEEK:1:604800:Week %W'
+        $xgrid = 'WEEK:1:WEEK:1:WEEK:1:604800:Week %W'
     }
     elsif ( $args->{term} eq 'week' ) {
         $period_title = 'Week';
@@ -159,12 +159,12 @@ sub graph {
     elsif ( $args->{term} eq 'day' ) {
         $period_title = 'Day';
         $period = -1 * 60 * 60 * 33; # 33 hours
-        $xgrid = 'HOUR:1:HOUR:2:HOUR:2:0:%H';
+        $xgrid = 'HOUR:2:HOUR:4:HOUR:4:0:%H:%M';
     }
     elsif ( $args->{term} eq '3days' ) {
         $period_title = '3 Days';
         $period = -1 * 60 * 60 * 24 * 3;
-        $xgrid = 'HOUR:6:DAY:1:HOUR:6:0:%H';
+        $xgrid = 'HOUR:6:DAY:1:HOUR:12:0:%H:%M';
     }
     elsif ( $args->{term} eq '8hours' ) {
         $period_title = '8 Hours';
@@ -178,8 +178,8 @@ sub graph {
     }
     else {
         $period_title = 'Hour';
-        $period = -1 * 60 * 60 * 2;
-        $xgrid = 'MINUTE:10:MINUTE:20:MINUTE:10:0:%M';
+        $period = -1 * 60 * 70;
+        $xgrid = 'MINUTE:10:MINUTE:20:MINUTE:10:0:%H:%M';
     }
 
     $period_title = $period_title . ' ' . $args->{host}->hostname;
@@ -194,11 +194,11 @@ sub graph {
         '-s', $period,
         '-e', $end,
         '-v', $title,
-        '--slope-mode',
+        #'--slope-mode',
         '--disable-rrdtool-tag',
         '--color', 'BACK#'.uc('313131'),
         '--color', 'CANVAS#'.uc('313131'),
-        '--color', 'GRID#'.uc('686868'),
+        '--color', 'GRID#'.uc('585858'),
         '--color', 'MGRID#'.uc('686868'),
         '--color', 'FONT#'.uc('c8c8c8'),
         '--color', 'FRAME#'.uc('686868'),
@@ -208,6 +208,8 @@ sub graph {
         '--color', 'ARROW#'.uc('f89407'),
         '--border', 1,
         '-t', $period_title,
+        '--font-render-mode', 'light',
+        '--font', "TITLE:8:",
         '--font', "AXIS:8:",
         '--font', "LEGEND:8:",
         @$def,
