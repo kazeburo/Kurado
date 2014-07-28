@@ -256,7 +256,7 @@ GPRINT:free:LAST:Cur\:%6.2lf%sByte
 GPRINT:free:AVERAGE:Ave\:%6.2lf%sByte
 GPRINT:free:MAX:Max\:%6.2lf%sByte\l
 # used swap
-LINE1:swap-used#a51800:used  swap
+LINE2:swap-used#a51800:used  swap
 GPRINT:swap-used:LAST:Cur\:%6.2lf%sByte
 GPRINT:swap-used:AVERAGE:Ave\:%6.2lf%sByte
 GPRINT:swap-used:MAX:Max\:%6.2lf%sByte\l
