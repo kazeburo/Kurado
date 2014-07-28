@@ -99,28 +99,23 @@ CDEF:my5r=my5,total,/,100,*
 AREA:my1r#c0c0c0:Select 
 GPRINT:my1r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my1r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my1r:MAX:Max\:%5.1lf[%%]
-GPRINT:my1r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my1r:MAX:Max\:%5.1lf[%%]\l
 STACK:my2r#000080:Insert 
 GPRINT:my2r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my2r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my2r:MAX:Max\:%5.1lf[%%]
-GPRINT:my2r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my2r:MAX:Max\:%5.1lf[%%]\l
 STACK:my3r#008080:Replace
 GPRINT:my3r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my3r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my3r:MAX:Max\:%5.1lf[%%]
-GPRINT:my3r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my3r:MAX:Max\:%5.1lf[%%]\l
 STACK:my4r#800080:Update 
 GPRINT:my4r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my4r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my4r:MAX:Max\:%5.1lf[%%]
-GPRINT:my4r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my4r:MAX:Max\:%5.1lf[%%]\l
 STACK:my5r#C0C000:Delete 
 GPRINT:my5r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my5r:AVERAGE:Ave\:%5.1lf[%%]
-GPRINT:my5r:MAX:Max\:%5.1lf[%%]
-GPRINT:my5r:MIN:Min\:%5.1lf[%%]\l
+GPRINT:my5r:MAX:Max\:%5.1lf[%%]\l
 
 @@ count
 Queries Count
@@ -132,28 +127,23 @@ DEF:my5=<%RRD_FOR com_delete.derive %>:n:AVERAGE
 AREA:my1#c0c0c0:Select 
 GPRINT:my1:LAST:Cur\:%7.1lf
 GPRINT:my1:AVERAGE:Ave\:%7.1lf
-GPRINT:my1:MAX:Max\:%7.1lf
-GPRINT:my1:MIN:Min\:%7.1lf\l
+GPRINT:my1:MAX:Max\:%7.1lf\l
 STACK:my2#000080:Insert 
 GPRINT:my2:LAST:Cur\:%7.1lf
 GPRINT:my2:AVERAGE:Ave\:%7.1lf
-GPRINT:my2:MAX:Max\:%7.1lf
-GPRINT:my2:MIN:Min\:%7.1lf\l
+GPRINT:my2:MAX:Max\:%7.1lf\l
 STACK:my3#008080:Replace
 GPRINT:my3:LAST:Cur\:%7.1lf
 GPRINT:my3:AVERAGE:Ave\:%7.1lf
-GPRINT:my3:MAX:Max\:%7.1lf
-GPRINT:my3:MIN:Min\:%7.1lf\l
+GPRINT:my3:MAX:Max\:%7.1lf\l
 STACK:my4#800080:Update 
 GPRINT:my4:LAST:Cur\:%7.1lf
 GPRINT:my4:AVERAGE:Ave\:%7.1lf
-GPRINT:my4:MAX:Max\:%7.1lf
-GPRINT:my4:MIN:Min\:%7.1lf\l
+GPRINT:my4:MAX:Max\:%7.1lf\l
 STACK:my5#C0C000:Delete 
 GPRINT:my5:LAST:Cur\:%7.1lf
 GPRINT:my5:AVERAGE:Ave\:%7.1lf
-GPRINT:my5:MAX:Max\:%7.1lf
-GPRINT:my5:MIN:Min\:%7.1lf\l
+GPRINT:my5:MAX:Max\:%7.1lf\l
 
 @@ select-type
 Select Types
@@ -163,25 +153,25 @@ DEF:my3=<%RRD_FOR select_range.derive %>:n:AVERAGE
 DEF:my4=<%RRD_FOR select_range_check.derive %>:n:AVERAGE
 DEF:my5=<%RRD_FOR select_scan.derive %>:n:AVERAGE
 AREA:my1#3d1400:Full Join      
-GPRINT:my1:LAST:Cur\:%6.2lf
-GPRINT:my1:AVERAGE:Ave\:%6.2lf
-GPRINT:my1:MAX:Max\:%6.2lf\l
+GPRINT:my1:LAST:Cur\:%7.1lf
+GPRINT:my1:AVERAGE:Ave\:%7.1lf
+GPRINT:my1:MAX:Max\:%7.1lf\l
 STACK:my2#aa3a26:Full Range Join
-GPRINT:my2:LAST:Cur\:%6.2lf
-GPRINT:my2:AVERAGE:Ave\:%6.2lf
-GPRINT:my2:MAX:Max\:%6.2lf\l
+GPRINT:my2:LAST:Cur\:%7.1lf
+GPRINT:my2:AVERAGE:Ave\:%7.1lf
+GPRINT:my2:MAX:Max\:%7.1lf\l
 STACK:my3#edaa40:Range          
-GPRINT:my3:LAST:Cur\:%6.2lf
-GPRINT:my3:AVERAGE:Ave\:%6.2lf
-GPRINT:my3:MAX:Max\:%6.2lf\l
+GPRINT:my3:LAST:Cur\:%7.1lf
+GPRINT:my3:AVERAGE:Ave\:%7.1lf
+GPRINT:my3:MAX:Max\:%7.1lf\l
 STACK:my4#13333b:Range Check    
-GPRINT:my4:LAST:Cur\:%6.2lf
-GPRINT:my4:AVERAGE:Ave\:%6.2lf
-GPRINT:my4:MAX:Max\:%6.2lf\l
+GPRINT:my4:LAST:Cur\:%7.1lf
+GPRINT:my4:AVERAGE:Ave\:%7.1lf
+GPRINT:my4:MAX:Max\:%7.1lf\l
 STACK:my5#686240:Scan           
-GPRINT:my5:LAST:Cur\:%6.2lf
-GPRINT:my5:AVERAGE:Ave\:%6.2lf
-GPRINT:my5:MAX:Max\:%6.2lf\l
+GPRINT:my5:LAST:Cur\:%7.1lf
+GPRINT:my5:AVERAGE:Ave\:%7.1lf
+GPRINT:my5:MAX:Max\:%7.1lf\l
 
 @@ sort
 Sorts
@@ -190,21 +180,21 @@ DEF:my2=<%RRD_FOR sort_range.derive %>:n:AVERAGE
 DEF:my3=<%RRD_FOR sort_merge_passes.derive %>:n:AVERAGE
 DEF:my4=<%RRD_FOR sort_scan.derive %>:n:AVERAGE
 AREA:my1#ffab02:Sort Rows        
-GPRINT:my1:LAST:Cur\:%6.2lf
-GPRINT:my1:AVERAGE:Ave\:%6.2lf
-GPRINT:my1:MAX:Max\:%6.2lf\l
+GPRINT:my1:LAST:Cur\:%7.1lf
+GPRINT:my1:AVERAGE:Ave\:%7.1lf
+GPRINT:my1:MAX:Max\:%7.1lf\l
 LINE1:my2#157418:Sort Ranges      
-GPRINT:my2:LAST:Cur\:%6.2lf
-GPRINT:my2:AVERAGE:Ave\:%6.2lf
-GPRINT:my2:MAX:Max\:%6.2lf\l
+GPRINT:my2:LAST:Cur\:%7.1lf
+GPRINT:my2:AVERAGE:Ave\:%7.1lf
+GPRINT:my2:MAX:Max\:%7.1lf\l
 LINE1:my3#da4625:Sort Merge Pass  
-GPRINT:my3:LAST:Cur\:%6.2lf
-GPRINT:my3:AVERAGE:Ave\:%6.2lf
-GPRINT:my3:MAX:Max\:%6.2lf\l
+GPRINT:my3:LAST:Cur\:%7.1lf
+GPRINT:my3:AVERAGE:Ave\:%7.1lf
+GPRINT:my3:MAX:Max\:%7.1lf\l
 LINE1:my4#4345ff:Sort Scan        
-GPRINT:my4:LAST:Cur\:%6.2lf
-GPRINT:my4:AVERAGE:Ave\:%6.2lf
-GPRINT:my4:MAX:Max\:%6.2lf\l
+GPRINT:my4:LAST:Cur\:%7.1lf
+GPRINT:my4:AVERAGE:Ave\:%7.1lf
+GPRINT:my4:MAX:Max\:%7.1lf\l
 
 @@ tmp-obj
 Temporary Objects
@@ -230,8 +220,7 @@ DEF:my1=<%RRD_FOR slow_queries.derive %>:n:AVERAGE
 AREA:my1#00c000:Slow Queries
 GPRINT:my1:LAST:Cur\:%7.3lf
 GPRINT:my1:AVERAGE:Ave\:%7.3lf
-GPRINT:my1:MAX:Max\:%7.3lf
-GPRINT:my1:MIN:Min\:%7.3lf\l
+GPRINT:my1:MAX:Max\:%7.3lf\l
 
 @@ thread
 Threads/connections

@@ -105,8 +105,7 @@ CDEF:my1=my1a,0,10000000,LIMIT
 AREA:my1#FF8C00:Total Command
 GPRINT:my1:LAST:Cur\:%5.1lf
 GPRINT:my1:AVERAGE:Ave\:%5.1lf
-GPRINT:my1:MAX:Max\:%5.1lf
-GPRINT:my1:MIN:Min\:%5.1lf\l
+GPRINT:my1:MAX:Max\:%5.1lf\l
 
 @@ conn
 Connections
@@ -117,18 +116,15 @@ CDEF:my3=my3a,0,10000000,LIMIT
 AREA:my1#00c000:Clients 
 GPRINT:my1:LAST:Cur\:%5.1lf
 GPRINT:my1:AVERAGE:Ave\:%5.1lf
-GPRINT:my1:MAX:Max\:%5.1lf
-GPRINT:my1:MIN:Min\:%5.1lf\l
+GPRINT:my1:MAX:Max\:%5.1lf\l
 LINE2:my2#990033:Slaves  
 GPRINT:my2:LAST:Cur\:%5.1lf
 GPRINT:my2:AVERAGE:Ave\:%5.1lf
-GPRINT:my2:MAX:Max\:%5.1lf
-GPRINT:my2:MIN:Min\:%5.1lf\l
+GPRINT:my2:MAX:Max\:%5.1lf\l
 LINE2:my3#596acf:Received
 GPRINT:my3:LAST:Cur\:%5.1lf
 GPRINT:my3:AVERAGE:Ave\:%5.1lf
-GPRINT:my3:MAX:Max\:%5.1lf
-GPRINT:my3:MIN:Min\:%5.1lf\l
+GPRINT:my3:MAX:Max\:%5.1lf\l
 
 @@ mem
 Memory Usage
@@ -138,8 +134,7 @@ CDEF:cf=86400,-8,1800,sm,PREDICT
 AREA:my1#4682B4:Used
 GPRINT:my1:LAST:Cur\:%5.1lf%sB
 GPRINT:my1:AVERAGE:Ave\:%5.1lf%sB
-GPRINT:my1:MAX:Max\:%5.1lf%sB
-GPRINT:my1:MIN:Min\:%5.1lf%sB\l
+GPRINT:my1:MAX:Max\:%5.1lf%sB\l
 LINE1:cf#b78795:Prediction:dashes=4,6
 
 @@ keys
@@ -150,27 +145,24 @@ CDEF:cf=86400,-8,1800,sm,PREDICT
 AREA:my1#2a9b2a:Keys
 GPRINT:my1:LAST:Cur\:%5.1lf
 GPRINT:my1:AVERAGE:Ave\:%5.1lf
-GPRINT:my1:MAX:Max\:%5.1lf
-GPRINT:my1:MIN:Min\:%5.1lf\l
+GPRINT:my1:MAX:Max\:%5.1lf\l
 LINE1:cf#b78795:Prediction:dashes=4,6
 
 @@ evicted
 Evicted Keys/sec
 DEF:my1=<%RRD_FOR evicted_keys.derive %>:n:AVERAGE
 LINE2:my1#800040:Evicted Keys/sec
-GPRINT:my1:LAST:Cur\:%5.1lf
-GPRINT:my1:AVERAGE:Ave\:%5.1lf
-GPRINT:my1:MAX:Max\:%5.1lf
-GPRINT:my1:MIN:Min\:%5.1lf\l
+GPRINT:my1:LAST:Cur\:%5.1lf%s
+GPRINT:my1:AVERAGE:Ave\:%5.1lf%s
+GPRINT:my1:MAX:Max\:%5.1lf%s\l
 
 @@ fragmentation
 Fragmentation Ratio
 DEF:my1=<%RRD_FOR mem_fragmentation_ratio.gauge %>:n:AVERAGE
 LINE2:my1#d27b86:Fragmentation
-GPRINT:my1:LAST:Cur\:%5.1lf
-GPRINT:my1:AVERAGE:Ave\:%5.1lf
-GPRINT:my1:MAX:Max\:%5.1lf
-GPRINT:my1:MIN:Min\:%5.1lf\l
+GPRINT:my1:LAST:Cur\:%5.1lf[%%]
+GPRINT:my1:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my1:MAX:Max\:%5.1lf[%%]\l
 
 @@ pubsub_ch
 Pub/Sub Channels
@@ -178,8 +170,7 @@ DEF:my1=<%RRD_FOR pubsub_channels.gauge %>:n:AVERAGE
 LINE2:my1#2E8B57:Pub/Sub Channels
 GPRINT:my1:LAST:Cur\:%5.1lf
 GPRINT:my1:AVERAGE:Ave\:%5.1lf
-GPRINT:my1:MAX:Max\:%5.1lf
-GPRINT:my1:MIN:Min\:%5.1lf\l
+GPRINT:my1:MAX:Max\:%5.1lf\l
 
 @@ slowlog
 Slowlog(total)
@@ -187,17 +178,15 @@ DEF:my1=<%RRD_FOR slowlog.gauge %>:n:AVERAGE
 AREA:my1#00c000:Slowlog
 GPRINT:my1:LAST:Cur\:%5.1lf
 GPRINT:my1:AVERAGE:Ave\:%5.1lf
-GPRINT:my1:MAX:Max\:%5.1lf
-GPRINT:my1:MIN:Min\:%5.1lf\l
+GPRINT:my1:MAX:Max\:%5.1lf\l
 
 @@ unsaved
 Unsaved Changes
 DEF:my1=<%RRD_FOR changes_since_last_save.gauge %>:n:AVERAGE
 AREA:my1#BDB76B:Changes
-GPRINT:my1:LAST:Cur\:%5.1lf
-GPRINT:my1:AVERAGE:Ave\:%5.1lf
-GPRINT:my1:MAX:Max\:%5.1lf
-GPRINT:my1:MIN:Min\:%5.1lf\l
+GPRINT:my1:LAST:Cur\:%6.1lf%s
+GPRINT:my1:AVERAGE:Ave\:%6.1lf%s
+GPRINT:my1:MAX:Max\:%6.1lf%s\l
 
 
 
