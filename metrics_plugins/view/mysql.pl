@@ -240,23 +240,23 @@ DEF:my2=<%RRD_FOR threads_connected.gauge %>:n:AVERAGE
 DEF:my3=<%RRD_FOR Threads_running.gauge %>:n:AVERAGE
 DEF:my4=<%RRD_FOR threads_created.derive %>:n:AVERAGE
 DEF:my5=<%RRD_FOR connections.derive %>:n:AVERAGE
-LINE1:my1#CC0000:Cached         
+LINE1:my1#CC0000:Cached           
 GPRINT:my1:LAST:Cur\:%6.1lf
 GPRINT:my1:AVERAGE:Ave\:%6.1lf
 GPRINT:my1:MAX:Max\:%6.1lf\l
-LINE1:my2#000080:Connected      
+LINE1:my2#000080:Connected        
 GPRINT:my2:LAST:Cur\:%6.1lf
 GPRINT:my2:AVERAGE:Ave\:%6.1lf
 GPRINT:my2:MAX:Max\:%6.1lf\l
-LINE1:my3#008080:Running        
+LINE1:my3#008080:Running          
 GPRINT:my3:LAST:Cur\:%6.1lf
 GPRINT:my3:AVERAGE:Ave\:%6.1lf
 GPRINT:my3:MAX:Max\:%6.1lf\l
-LINE1:my4#00c000:Threads created
+LINE1:my4#00c000:Threads created/s
 GPRINT:my4:LAST:Cur\:%6.1lf
 GPRINT:my4:AVERAGE:Ave\:%6.1lf
 GPRINT:my4:MAX:Max\:%6.1lf\l
-LINE1:my5#0000c0:connections    
+LINE1:my5#ffab02:Connections/s    
 GPRINT:my5:LAST:Cur\:%6.1lf
 GPRINT:my5:AVERAGE:Ave\:%6.1lf
 GPRINT:my5:MAX:Max\:%6.1lf\l
