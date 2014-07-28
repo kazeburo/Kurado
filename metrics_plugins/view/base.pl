@@ -57,9 +57,11 @@ sub metrics_list {
 
     # disk io
     my @io_devices = split /,/, $meta->{'disk-io-devices'} || '';
+    my %swap_devices = map { ($_ => 1) } split /,/, $meta->{'disk-swap-devices'} || '';
     $list .= "# Disk IO\twarn\tno devices\n" if ! @io_devices;
     foreach my $device ( @io_devices ) {
-        $list .= "# Disk IO($device)\n";
+        my $is_swap = exists $swap_devices{$device} ? "-swap" : "";
+        $list .= "# Disk IO($device$is_swap)\n";
         $list .= "disk-io-byte-$device\n";
         $list .= "disk-io-count-$device\n";
     }

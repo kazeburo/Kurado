@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Kurado::Util;
 
-our @FUNC = qw/memory loadavg uptime sys_version processors cpu_usage tcp_established disk_usage disk_io traffic/;
+our @FUNC = qw/memory loadavg uptime sys_version processors cpu_usage tcp_established disk_usage disk_io swaps traffic/;
 
 sub new {
     my ($class, $plugins) = @_;
@@ -268,6 +268,27 @@ sub disk_io {
         $self->metrics->{"disk-io-".$device."-write-sectors.derive"} = $dstats[6];
     }
     $self->meta->{"disk-io-devices"} = join ",", @devices if @devices;
+}
+
+
+sub swaps {
+    my $self = shift;
+    open my $fh, '<', '/proc/swaps' or die "$!\n";
+#   [vagrant@localhost ~]$ cat /proc/swaps 
+#   Filename                                Type            Size    Used    Priority
+#   /dev/dm-1                               partition       950264  208     -1
+    my @swaps;
+    while (<$fh>) {
+        if ( m!^/dev/(.+?)\s*partition! ) {
+            my $device = $1;
+            if ( $device =~ m!^dm-! ) {
+                $device = translate_device_mapper($device);
+            }
+            $device =~ s![^A-Za-z0-9_-]!_!g;
+            push @swaps, $device;
+        }
+    }
+    $self->meta->{"disk-swap-devices"} = join ",", @swaps if @swaps;
 }
 
 sub traffic {
