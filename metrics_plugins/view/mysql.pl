@@ -253,11 +253,11 @@ GPRINT:my3:LAST:Cur\:%6.1lf
 GPRINT:my3:AVERAGE:Ave\:%6.1lf
 GPRINT:my3:MAX:Max\:%6.1lf\l
 LINE1:my4#00c000:Threads created/s
-GPRINT:my4:LAST:Cur\:%6.1lf
-GPRINT:my4:AVERAGE:Ave\:%6.1lf
-GPRINT:my4:MAX:Max\:%6.1lf\l
+GPRINT:my4:LAST:Cur\:%6.2lf
+GPRINT:my4:AVERAGE:Ave\:%6.2lf
+GPRINT:my4:MAX:Max\:%6.2lf\l
 LINE1:my5#ffab02:Connections/s    
-GPRINT:my5:LAST:Cur\:%6.1lf
-GPRINT:my5:AVERAGE:Ave\:%6.1lf
-GPRINT:my5:MAX:Max\:%6.1lf\l
+GPRINT:my5:LAST:Cur\:%6.2lf
+GPRINT:my5:AVERAGE:Ave\:%6.2lf
+GPRINT:my5:MAX:Max\:%6.2lf\l
 
