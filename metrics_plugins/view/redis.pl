@@ -100,7 +100,8 @@ under the same terms as Perl itself.
 __DATA__
 @@ cmd
 Command Processed
-DEF:my1=<%RRD_FOR total_commands_processed.derive %>:n:AVERAGE
+DEF:my1a=<%RRD_FOR total_commands_processed.derive %>:n:AVERAGE
+CDEF:my1=my1a,0,10000000,LIMIT
 AREA:my1#FF8C00:Total Command
 GPRINT:my1:LAST:Cur\:%5.1lf
 GPRINT:my1:AVERAGE:Ave\:%5.1lf
@@ -111,7 +112,8 @@ GPRINT:my1:MIN:Min\:%5.1lf\l
 Connections
 DEF:my1=<%RRD_FOR connected_clients.gauge %>:n:AVERAGE
 DEF:my2=<%RRD_FOR connected_slaves.gauge %>:n:AVERAGE
-DEF:my3=<%RRD_FOR total_connections_received.derive %>:n:AVERAGE
+DEF:my3a=<%RRD_FOR total_connections_received.derive %>:n:AVERAGE
+CDEF:my3=my3a,0,10000000,LIMIT
 AREA:my1#00c000:Clients 
 GPRINT:my1:LAST:Cur\:%5.1lf
 GPRINT:my1:AVERAGE:Ave\:%5.1lf
