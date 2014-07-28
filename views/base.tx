@@ -6,6 +6,7 @@
 <link rel="shortcut icon" href="<: $c.req.uri_for('/favicon.ico') :>" type="image/vnd.microsoft.icon" />
 <link rel="stylesheet" href="<: $c.req.uri_for('/css/bootstrap.min.css') :>">
 <link rel="stylesheet" href="<: $c.req.uri_for('/css/bootstrap-datetimepicker.min.css') :>">
+<link rel="stylesheet" href="<: $c.req.uri_for('/css/bootstrap-switch.min.css') :>">
 <link rel="stylesheet" href="<: $c.req.uri_for('/css/local.css') :>">
 </head>
 <body>
@@ -14,8 +15,10 @@
 
 <script type="text/javascript" src="<: $c.req.uri_for('/js/jquery.min.js') :>"></script>
 <script type="text/javascript" src="<: $c.req.uri_for('/js/jquery.shiftcheckbox.js') :>"></script>
+<script type="text/javascript" src="<: $c.req.uri_for('/js/jquery.cookie.js') :>"></script>
 <script type="text/javascript" src="<: $c.req.uri_for('/js/bootstrap.min.js') :>"></script>
 <script type="text/javascript" src="<: $c.req.uri_for('/js/bootstrap-datetimepicker.min.js') :>"></script>
+<script type="text/javascript" src="<: $c.req.uri_for('/js/bootstrap-switch.min.js') :>"></script>
 <script>
 $(function(){
   $('.form-datetime').datetimepicker({
@@ -106,7 +109,35 @@ $(function(){
         "json"
       );
     };
-    haserror_api(0);
+    if ( hostslen > 0 ) {
+      haserror_api(0);
+    }
+
+    $.cookie.json = true;
+    var open_new = $.cookie('open-new');
+    console.log(open_new);
+    if ( open_new == true ) {
+        $("#open-new").attr('checked',true);
+    }
+    $("#open-new").bootstrapSwitch({
+        size: 'mini'
+    });
+    var set_target = function (state) {
+      if ( state == true ) {
+        $("a.host-address").attr("target","_blank");
+        $("#open-checked").attr("target","_blank");
+      }
+      else {
+        $("a.host-address").attr("target","_self");
+        $("#open-checked").attr("target","_self");
+      }
+    }
+    set_target(open_new);
+    $('#open-new').on('switchChange.bootstrapSwitch', function(event, state) {
+      $.cookie('open-new', state, { expires: 365, path: '/' });
+      set_target(state);
+      event.preventDefault();
+    });
 });
 </script>
 </body>

@@ -128,6 +128,46 @@ body {
   color: #fff;
 }
 
+.bootstrap-switch.bootstrap-switch-mini {
+  margin-top: -1px;
+  min-width: 60px;
+  min-height: 20px;
+  border-color: rgba(0,0,0,0.6);
+  border-radius: 3px;
+}
+.bootstrap-switch .bootstrap-switch-container {
+  height: 20px;
+  border-radius: 3px;
+}
+
+.bootstrap-switch .bootstrap-switch-handle-on span,
+.bootstrap-switch .bootstrap-switch-handle-off span,
+.bootstrap-switch .bootstrap-switch-label span {
+  display: block;
+  padding-top: 1px;
+  font-size: 10px;
+  line-height: 9px;
+  font-weight: normal;
+}
+.bootstrap-switch .bootstrap-switch-label {
+  background-image: linear-gradient(#484e55, #3a3f44 60%, #313539);
+}
+.bootstrap-switch .bootstrap-switch-handle-on.bootstrap-switch-primary,
+.bootstrap-switch .bootstrap-switch-handle-on.bootstrap-switch-default {
+  background-color: #f89406;
+}
+
+.bootstrap-switch .bootstrap-switch-handle-off.bootstrap-switch-primary,
+.bootstrap-switch .bootstrap-switch-handle-off.bootstrap-switch-default {
+  background-color: #c8c8c8;
+  color: #222;
+}
+
+#subnav .label-for-open-new {
+  font-weight: normal;
+  font-size: 12px;
+}
+
 .graph-nav {
   background-color: #272b30;
 }
