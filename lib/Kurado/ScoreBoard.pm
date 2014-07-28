@@ -55,7 +55,7 @@ sub kill_zombie {
     for my $pid ( keys %$stats) {
         my($status,$time,$type) = split /\s+/, $stats->{$pid}, 3;
         if ( $status == 1 && $now - $time > $threshold ) {
-            warnf 'kill zombie $type pid:%s', $type, $pid;
+            warnf 'kill zombie %s pid:%s', $type, $pid;
             kill 'TERM', $pid;
         }
     }
