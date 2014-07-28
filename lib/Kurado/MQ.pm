@@ -297,7 +297,7 @@ sub do_io {
     }
     unless ((! defined($ret)
                  && ($! == EINTR || $! == EAGAIN || $! == EWOULDBLOCK))) {
-        die "cannot write/read mqtt socket\n";
+        die "cannot write/read mq socket\n";
         return;
     }
     # wait for data
