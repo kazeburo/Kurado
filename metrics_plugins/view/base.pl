@@ -58,7 +58,7 @@ sub metrics_list {
     # disk io
     my @io_devices = split /,/, $meta->{'disk-io-devices'} || '';
     $list .= "# Disk IO\twarn\tno devices\n" if ! @io_devices;
-    foreach my $device ( @usage_devices ) {
+    foreach my $device ( @io_devices ) {
         $list .= "# Disk IO($device)\n";
         $list .= "disk-io-byte-$device\n";
         $list .= "disk-io-count-$device\n";
