@@ -147,7 +147,7 @@ $meta{$_} = $variable{$_} for grep { exists $variable{$_} }
        log_slow_queries long_query_time 
        log_queries_not_using_indexes max_connections
        max_connect_errors thread_cache_size
-       innodb_version innodb_buffer_pool_size innodb_flush_method
+       innodb innodb_version innodb_buffer_pool_size innodb_flush_method
        innodb_support_xa innodb_flush_log_at_trx_commit innodb_doublewrite
        innodb_file_per_table innodb_file_format innodb_io_capacity 
        innodb_page_size
