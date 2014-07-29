@@ -74,7 +74,7 @@ sub metrics_list {
     my ($port) = @{$plugin->plugin_arguments};
     $port = $port ? '('.$port.')' : "";
     $list .= join("\t",'#MySQL'.$port,@mysql)."\n";
-    $list .= "$_\n" for qw/rate count select-type sort tmp-obj slow thread/;
+    $list .= "$_\n" for qw/rate count slow select-type sort tmp-obj thread/;
     if ( $replication ) {
         $list .= join("\t",'#MySQL replication'.$port,@replication)."\n";
         $list .= "$_\n" for qw/replication-second replication-position/;
