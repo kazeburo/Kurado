@@ -245,17 +245,17 @@ GPRINT:free:LAST:Cur\:%6.1lf%sByte
 GPRINT:free:AVERAGE:Ave\:%6.1lf%sByte
 GPRINT:free:MAX:Max\:%6.1lf%sByte\l
 # used swap
-LINE2:swap-used#a51800:used  swap
+LINE2:swap-used#ff5f60:used  swap
 GPRINT:swap-used:LAST:Cur\:%6.1lf%sByte
 GPRINT:swap-used:AVERAGE:Ave\:%6.1lf%sByte
 GPRINT:swap-used:MAX:Max\:%6.1lf%sByte\l
 # total swap
-LINE1:swap-total#d77c79:total swap
+LINE1:swap-total#800180:total swap:dashes=2,4
 GPRINT:swap-total:LAST:Cur\:%6.1lf%sByte
 GPRINT:swap-total:AVERAGE:Ave\:%6.1lf%sByte
 GPRINT:swap-total:MAX:Max\:%6.1lf%sByte\l
 # total real
-LINE2:total#005493:total real
+LINE2:total#08007f:total real
 GPRINT:total:LAST:Cur\:%6.1lf%sByte
 GPRINT:total:AVERAGE:Ave\:%6.1lf%sByte
 GPRINT:total:MAX:Max\:%6.1lf%sByte\l
