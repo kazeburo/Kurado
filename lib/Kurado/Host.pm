@@ -94,6 +94,7 @@ sub metrics_list {
                 type => 'view',
             );
             die "$stderr\n" unless $success;
+            warnf $stderr if $stderr;
             $self->parse_metrics_list($stdout);
         };
         if ( $@ ) {
@@ -132,12 +133,18 @@ sub parse_metrics_list {
             $line =~ s! *$!!g;
             my ($label, @args) = split /\t/,$line;
             die "odd number of metrics_list meta in '# $line'" if @args % 2;
+            my @meta;
+            while ( @args ) {
+                my $key = shift(@args);
+                my $val = shift(@args);
+                push @meta, {key=>$key,value=>$val};
+            }
             my %meta = @args;
             # label
             push @metrics, {
                 graphs => [],
                 label => $label,
-                meta => \%meta
+                meta => \@meta
             };
         }
         else {
@@ -147,7 +154,7 @@ sub parse_metrics_list {
                 push @metrics, {
                     graphs => [$line],
                     label => "",
-                    meta => {},
+                    meta => [],
                 };
             }
             else {
@@ -177,6 +184,7 @@ sub metrics_graph {
             graph => $args->{graph},
         );
         die "$stderr\n" unless $success;
+        warnf $stderr if $stderr;
         my $rrd = Kurado::RRD->new(data_dir => $self->config->data_dir);        
         ($img,$data) = $rrd->graph(
             def => $stdout,
@@ -206,6 +214,7 @@ sub fetch_metrics {
             type => 'fetch',
         );
         die "$stderr\n" unless $success;
+        warnf $stderr if $stderr;
         $body .= $self->parse_fetched_metrics(
             plugin => $args->{plugin},
             result => $stdout

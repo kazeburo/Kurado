@@ -256,8 +256,9 @@ sub parse_graph_def {
 # GPRINT:out:AVERAGE:Ave\:%6.2lf%sbps
 # GPRINT:out:MAX:Max\:%6.2lf%sbps\l
     my $def = $args->{def};
-    $def =~ s!<%RRD_FOR\s+(.+?\.(?:gauge|counter|derive|absolute))\s+%>!&rrd_path_for($self,$args->{plugin},$args->{host},$1)!ge;
+    $def =~ s!<%RRD(?:_FOR)?\s+(.+?\.(?:gauge|counter|derive|absolute))\s+%>!&rrd_path_for($self,$args->{plugin},$args->{host},$1)!ge;
     $def =~ s!<%RRD_EXTEND\s+(.+?) +(.+?) +(.+?\.(?:gauge|counter|derive|absolute))\s+%>!&rrd_path_extend($self,$1,$2,$3)!ge;
+    $def =~ s!^DEF:([^:]+):[^:]+:(MAX|AVERAGE|MIN)!DEF:$1:n:$2!gms;
     my @def = grep {$_} grep { $_ !~ m!^\s*#! } split /\n/,$def;
     my $title = shift @def;
     $title,\@def;

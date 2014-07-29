@@ -50,20 +50,39 @@ sub metrics_list {
     my $meta = $plugin->metrics_meta;
     my $list='';
 
+    my $replication = delete $meta->{replication};
+    my $innodb = delete $meta->{innodb};
+
     # info
-    my @info;
-    for my $key (sort { $a cmp $b } keys %$meta) {
+    my @mysql;
+    my @replication;
+    my @innodb;
+    for my $key ( $plugin->sort_info(keys %$meta) ) {
         if ( $key eq 'uptime' ) {
-            push @info, 'uptime', $plugin->uptime2str($meta->{uptime});
+            push @mysql, 'uptime', $plugin->uptime2str($meta->{uptime});
+        }
+        elsif ( $key =~ m!^innodb_(.+)$! ) {
+            push @innodb, $1, $meta->{$key};
+        }
+        elsif ( $key =~ m!^replication_(.+)$! ) {
+            push @replication, $1, $meta->{$key};
         }
         else {
-            push @info, $key, $meta->{$key};
+            push @mysql, $key, $meta->{$key};
         }
     }
     my ($port) = @{$plugin->plugin_arguments};
-    $port = '('.$port.')' if $port;
-    $list .= join("\t",'#MySQL'.$port,@info)."\n";
+    $port = $port ? '('.$port.')' : "";
+    $list .= join("\t",'#MySQL'.$port,@mysql)."\n";
     $list .= "$_\n" for qw/rate count select-type sort tmp-obj slow thread/;
+    if ( $replication ) {
+        $list .= join("\t",'#MySQL replication'.$port,@replication)."\n";
+        $list .= "$_\n" for qw/replication-second replication-position/;
+    }
+    if ( $innodb ) {
+        $list .= join("\t",'#MySQL InnoDB'.$port,@innodb)."\n";
+        $list .= "$_\n" for qw/row-ops-rate row-pos-speed cache-rate bp-usage page-io/;
+    }
     print $list;
 }
 
@@ -249,4 +268,121 @@ LINE1:my5#ffab02:Connections/s
 GPRINT:my5:LAST:Cur\:%6.2lf
 GPRINT:my5:AVERAGE:Ave\:%6.2lf
 GPRINT:my5:MAX:Max\:%6.2lf\l
+
+@@ replication-second
+Seconds Behind Master
+DEF:my1=<%RRD replication_second_behind_master.gauge %>:n:AVERAGE
+LINE1:my1#c03300:Seconds
+GPRINT:my1:LAST:Cur\:%6.1lf
+GPRINT:my1:AVERAGE:Ave\:%6.1lf
+GPRINT:my1:MAX:Max\:%6.1lf\l
+
+@@ replication-position
+Position Behind Master
+DEF:read=<%RRD replication_read_master_log_pos.gauge %>:n:AVERAGE
+DEF:exec=<%RRD replication_exec_master_log_pos.gauge %>:n:AVERAGE
+CDEF:my1=read,exec,-,0,1000000000,LIMIT
+AREA:my1#c00066:Position
+GPRINT:my1:LAST:Cur\:%6.1lf
+GPRINT:my1:AVERAGE:Ave\:%6.1lf
+GPRINT:my1:MAX:Max\:%6.1lf\l
+
+@@ row-ops-rate
+ROW OPERATIONS Rate
+DEF:my1=<%RRD innodb_rows_inserted.derive %>:ir:AVERAGE
+DEF:my2=<%RRD innodb_rows_updated.derive %>:ur:AVERAGE
+DEF:my3=<%RRD innodb_rows_deleted.derive %>:dr:AVERAGE
+DEF:my4=<%RRD innodb_rows_read.derive %>:rr:AVERAGE
+CDEF:total=my1,my2,+,my3,+,my4,+
+CDEF:my1r=my1,total,/,100,*
+CDEF:my2r=my2,total,/,100,*
+CDEF:my3r=my3,total,/,100,*
+CDEF:my4r=my4,total,/,100,*
+AREA:my1r#c0c0c0:Insert
+GPRINT:my1r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my1r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my1r:MAX:Max\:%5.1lf[%%]\l
+STACK:my2r#000080:Update
+GPRINT:my2r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my2r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my2r:MAX:Max\:%5.1lf[%%]\l
+STACK:my3r#008080:Delete
+GPRINT:my3r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my3r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my3r:MAX:Max\:%5.1lf[%%]\l
+STACK:my4r#800080:Read  
+GPRINT:my4r:LAST:Cur\:%5.1lf[%%]
+GPRINT:my4r:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my4r:MAX:Max\:%5.1lf[%%]\l
+
+@@ row-pos-speed
+ROW OPERATIONS Speed
+DEF:my1=<%RRD innodb_rows_inserted.derive %>:ir:AVERAGE
+DEF:my2=<%RRD innodb_rows_updated.derive %>:ur:AVERAGE
+DEF:my3=<%RRD innodb_rows_deleted.derive %>:dr:AVERAGE
+DEF:my4=<%RRD innodb_rows_read.derive %>:rr:AVERAGE
+LINE1:my1#CC0000:Insert
+GPRINT:my1:LAST:Cur\:%6.1lf
+GPRINT:my1:AVERAGE:Ave\:%6.1lf
+GPRINT:my1:MAX:Max\:%6.1lf\l
+LINE1:my2#000080:Update
+GPRINT:my2:LAST:Cur\:%6.1lf
+GPRINT:my2:AVERAGE:Ave\:%6.1lf
+GPRINT:my2:MAX:Max\:%6.1lf\l
+LINE1:my3#008080:Delete
+GPRINT:my3:LAST:Cur\:%6.1lf
+GPRINT:my3:AVERAGE:Ave\:%6.1lf
+GPRINT:my3:MAX:Max\:%6.1lf\l
+LINE1:my4#800080:Read  
+GPRINT:my4:LAST:Cur\:%6.1lf
+GPRINT:my4:AVERAGE:Ave\:%6.1lf
+GPRINT:my4:MAX:Max\:%6.1lf\l
+
+@@ cache-rate
+Buffer pool hit rate
+DEF:my1=<%RRD innodb_buffer_pool_hit_rate.gauge %>:cr:AVERAGE
+AREA:my1#990000:Hit Rate
+GPRINT:my1:LAST:Cur\:%5.1lf[%%]
+GPRINT:my1:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my1:MAX:Max\:%5.1lf[%%]\l
+LINE:100
+
+@@ bp-usage
+Buffer pool usage
+DEF:my1=<%RRD innodb_buffer_pool_pages_total.gauge %>:bp_total:AVERAGE
+DEF:my2=<%RRD innodb_buffer_pool_pages_data.gauge %>:bp_total:AVERAGE
+DEF:my3=<%RRD innodb_buffer_pool_pages_free.gauge %>:bp_free:AVERAGE
+DEF:my4=<%RRD innodb_buffer_pool_pages_dirty.gauge %>:bp_free:AVERAGE
+AREA:my1#3d1400:Pool Size     
+GPRINT:my1:LAST:Cur\:%5.1lf%S\l
+AREA:my2#edaa40:Database Pages
+GPRINT:my2:LAST:Cur\:%5.1lf%S
+GPRINT:my2:AVERAGE:Ave\:%5.1lf%S
+GPRINT:my2:MAX:Max\:%5.1lf%S\l
+STACK:my3#aa3a26:Free Pages    
+GPRINT:my3:LAST:Cur\:%5.1lf%S
+GPRINT:my3:AVERAGE:Ave\:%5.1lf%S
+GPRINT:my3:MAX:Max\:%5.1lf%S\l
+LINE1:my4#13333b:Modified Pages
+GPRINT:my4:LAST:Cur\:%5.1lf%S
+GPRINT:my4:AVERAGE:Ave\:%5.1lf%S
+GPRINT:my4:MAX:Max\:%5.1lf%S\l
+
+@@ page-io
+Buffer Pool Activity
+DEF:my1=<%RRD innodb_pages_created.derive %>:pr:AVERAGE
+DEF:my2=<%RRD innodb_pages_read.derive %>:pw:AVERAGE
+DEF:my3=<%RRD innodb_pages_written.derive %>:pw:AVERAGE
+LINE1:my1#d6883a:Pages Create
+GPRINT:my1:LAST:Cur\:%6.1lf
+GPRINT:my1:AVERAGE:Ave\:%6.1lf
+GPRINT:my1:MAX:Max\:%6.1lf\l
+LINE1:my2#e6d882:Pages Read  
+GPRINT:my2:LAST:Cur\:%6.1lf
+GPRINT:my2:AVERAGE:Ave\:%6.1lf
+GPRINT:my2:MAX:Max\:%6.1lf\l
+LINE1:my3#55ad84:Pages Write 
+GPRINT:my3:LAST:Cur\:%6.1lf
+GPRINT:my3:AVERAGE:Ave\:%6.1lf
+GPRINT:my3:MAX:Max\:%6.1lf\l
 

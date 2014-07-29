@@ -78,8 +78,6 @@ if ( exists $status{innodb_page_size} ) {
 
     $status{innodb_buffer_pool_hit_rate} = sprintf "%.5f",
         (1.0 - $status{"innodb_buffer_pool_reads"} / $status{"innodb_buffer_pool_read_requests"}) * 100;
-    $status{innodb_buffer_pool_dirty_pages_rate} = sprintf "%.5f",
-        $status{"innodb_buffer_pool_pages_dirty"} / $status{"innodb_buffer_pool_pages_data"} * 100.0;
 
     $status{innodb_buffer_pool_pages_total} = $status{innodb_buffer_pool_pages_total} * $status{innodb_page_size};
     $status{innodb_buffer_pool_pages_free} = $status{innodb_buffer_pool_pages_free} * $status{innodb_page_size};
@@ -125,10 +123,6 @@ else {
                 $status{innodb_pages_written} = $3;
             }
         } # for
-        if ( exists $status{"innodb_buffer_pool_pages_dirty"} && exists $status{"innodb_buffer_pool_pages_data"} ) {
-            $status{innodb_buffer_pool_dirty_pages_rate} = sprintf "%.5f",
-                $status{"innodb_buffer_pool_pages_dirty"} / $status{"innodb_buffer_pool_pages_data"} * 100.0;
-        }
       
     } # status
 }
@@ -169,8 +163,9 @@ for (qw/created_tmp_tables created_tmp_disk_tables created_tmp_files com_delete
     $metrics{"$_.derive"} = exists $status{$_} ? $status{$_} : 'U';
 }
 for (qw/threads_cached threads_connected threads_running
-        innodb_buffer_pool_hit_rate innodb_buffer_pool_dirty_pages_rate
+        innodb_buffer_pool_hit_rate 
         innodb_buffer_pool_pages_total innodb_buffer_pool_pages_free
+        innodb_buffer_pool_pages_data innodb_buffer_pool_pages_dirty
         replication_second_behind_master replication_read_master_log_pos replication_exec_master_log_pos
        /) {
     next if $_ =~ m!^innodb_! && !$meta{innodb};

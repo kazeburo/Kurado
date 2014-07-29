@@ -174,6 +174,27 @@ sub unit {
     return $n.$unit;
 }
 
+my @info_order = (
+    [qr/^version$/i => 1],
+    [qr/^uptime$/i => 2],
+    [qr/^version/i => 3],
+    [qr/^uptime/i => 4],
+    [qr/version$/i => 5],
+    [qr/uptime$/i => 6],
+);
+sub match_order {
+    my $key = shift;
+    my ($hit) = grep { $key =~ m!$_->[0]! } @info_order;
+    return 999 unless $hit;
+    $hit->[1];
+}
+sub sort_info {
+    my $self = shift;
+    sort {
+        match_order($a) <=> match_order($b) || $a cmp $b
+    } @_;
+}
+
 sub render {
     my $self = shift;
     my $template = shift;

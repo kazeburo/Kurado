@@ -39,7 +39,7 @@ sub metrics_list {
 
     # info
     my @info;
-    for my $key (sort { $a cmp $b } keys %$meta) {
+    for my $key ( $plugin->sort_info(keys %$meta) ) {
         if ( $key eq 'uptime' ) {
             push @info, 'uptime', $plugin->uptime2str($meta->{uptime});
         }
