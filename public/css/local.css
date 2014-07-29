@@ -207,6 +207,11 @@ h3.service {
   margin-bottom: 8px;
   font-weight: normal;
 }
+h3.service a,
+h3.service a:hover {
+  text-decoration: none;
+  color: #444;
+}
 .servers {
 }
 .servers .table td {

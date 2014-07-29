@@ -48,7 +48,7 @@
     <div class="col-sm-9">
 
 : for $services -> $service {
-  <h3 class="service"><span class="glyphicon glyphicon-stats"></span> <: $service.service :></h3>
+  <h3 class="service"><a href="<: $c.req.uri_for('/',['service'=>$service.service]) :>"><span class="glyphicon glyphicon-stats"></span> <: $service.service :></a></h3>
   : for $service.sections -> $section {
     <div class="servers">
     <table class="table">
