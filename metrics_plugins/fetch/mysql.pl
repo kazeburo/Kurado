@@ -81,8 +81,8 @@ if ( exists $status{innodb_page_size} ) {
 
     $status{innodb_buffer_pool_pages_total} = $status{innodb_buffer_pool_pages_total} * $status{innodb_page_size};
     $status{innodb_buffer_pool_pages_free} = $status{innodb_buffer_pool_pages_free} * $status{innodb_page_size};
-    $status{innodb_buffer_pool_pages_dirty} = $status{innodb_buffer_pool_pages_total} * $status{innodb_page_size};
-    $status{innodb_buffer_pool_pages_data} = $status{innodb_buffer_pool_pages_free} * $status{innodb_page_size};
+    $status{innodb_buffer_pool_pages_dirty} = $status{innodb_buffer_pool_pages_dirty} * $status{innodb_page_size};
+    $status{innodb_buffer_pool_pages_data} = $status{innodb_buffer_pool_pages_data} * $status{innodb_page_size};
 
 }
 else {
