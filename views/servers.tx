@@ -82,9 +82,11 @@
 : for $hosts -> $host {
   <th class="hostname">
     <a href="<: $c.req.uri_for('/',[service=>$host.service]) :>"><: $host.service :></a>
-    /
-    <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>"><: $host.address :></a>
-    <: $host.hostname :>
+    <span class="glyphicon glyphicon-chevron-right"></span>
+    <a href="<: $c.req.uri_for('/server',[address=>$host.address]) :>"><: $host.address :></a><br />
+    <span class="host-hostname"><: $host.hostname :></span>
+    <span class="host-comments"><: $host.comments :></span>
+    <div class="thin-dash">&nbsp;</div>
   </th>
 : } # hosts
 </tr>
