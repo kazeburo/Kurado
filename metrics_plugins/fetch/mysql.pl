@@ -81,6 +81,9 @@ if ( exists $status{innodb_page_size} ) {
 
     $status{innodb_buffer_pool_pages_total} = $status{innodb_buffer_pool_pages_total} * $status{innodb_page_size};
     $status{innodb_buffer_pool_pages_free} = $status{innodb_buffer_pool_pages_free} * $status{innodb_page_size};
+    $status{innodb_buffer_pool_pages_dirty} = $status{innodb_buffer_pool_pages_total} * $status{innodb_page_size};
+    $status{innodb_buffer_pool_pages_data} = $status{innodb_buffer_pool_pages_free} * $status{innodb_page_size};
+
 }
 else {
     # MySQL 4 Innodb
@@ -112,10 +115,10 @@ else {
                 $status{innodb_buffer_pool_pages_free} = $1 * $status{innodb_page_size};
             }
             if ( $line =~ /^Database pages\s*(\d+)$/ ) {
-                $status{innodb_buffer_pool_pages_data} = $1;
+                $status{innodb_buffer_pool_pages_data} = $1 * $status{innodb_page_size};
             }
             if ( $line =~ /^Modified db pages\s*(\d+)$/ ) {
-                $status{innodb_buffer_pool_pages_dirty} = $1;
+                $status{innodb_buffer_pool_pages_dirty} = $1 * $status{innodb_page_size};
             }
             if ( $line =~ /^Pages read\s+(\d+), created\s+(\d+), written\s+(\d+)$/ ) {
                 $status{innodb_pages_read} = $1;

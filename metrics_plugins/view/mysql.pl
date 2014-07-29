@@ -363,7 +363,7 @@ STACK:my3#aa3a26:Free Pages
 GPRINT:my3:LAST:Cur\:%5.1lf%S
 GPRINT:my3:AVERAGE:Ave\:%5.1lf%S
 GPRINT:my3:MAX:Max\:%5.1lf%S\l
-LINE1:my4#13333b:Modified Pages
+AREA:my4#13333b:Modified Pages
 GPRINT:my4:LAST:Cur\:%5.1lf%S
 GPRINT:my4:AVERAGE:Ave\:%5.1lf%S
 GPRINT:my4:MAX:Max\:%5.1lf%S\l
