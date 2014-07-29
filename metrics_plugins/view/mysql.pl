@@ -364,7 +364,7 @@ Dirty pages rate
 DEF:my2=<%RRD innodb_buffer_pool_pages_data.gauge %>:bp_total:AVERAGE
 DEF:my4=<%RRD innodb_buffer_pool_pages_dirty.gauge %>:bp_free:AVERAGE
 CDEF:my1=my4,my2,/,100,*
-AREA:my1#5a2b09:Dirty page rate
+AREA:my1#13333b:Dirty page rate
 GPRINT:my1:LAST:Cur\:%5.1lf[%%]
 GPRINT:my1:AVERAGE:Ave\:%5.1lf[%%]
 GPRINT:my1:MAX:Max\:%5.1lf[%%]\l
