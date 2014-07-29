@@ -81,7 +81,7 @@ sub metrics_list {
     }
     if ( $innodb ) {
         $list .= join("\t",'#MySQL InnoDB'.$port,@innodb)."\n";
-        $list .= "$_\n" for qw/row-ops-rate row-pos-speed cache-rate bp-usage page-io/;
+        $list .= "$_\n" for qw/row-ops-rate row-pos-speed cache-rate bp-usage dirty-rate page-io/;
     }
     print $list;
 }
@@ -350,23 +350,25 @@ LINE:100
 @@ bp-usage
 Buffer pool usage
 DEF:my1=<%RRD innodb_buffer_pool_pages_total.gauge %>:bp_total:AVERAGE
-DEF:my2=<%RRD innodb_buffer_pool_pages_data.gauge %>:bp_total:AVERAGE
 DEF:my3=<%RRD innodb_buffer_pool_pages_free.gauge %>:bp_free:AVERAGE
-DEF:my4=<%RRD innodb_buffer_pool_pages_dirty.gauge %>:bp_free:AVERAGE
-AREA:my1#3d1400:Pool Size     
+CDEF:my2=my1,my3,-
+AREA:my1#3d1400:Pool Size 
 GPRINT:my1:LAST:Cur\:%5.1lf%S\l
-AREA:my2#edaa40:Database Pages
+AREA:my2#edaa40:Used Pages
 GPRINT:my2:LAST:Cur\:%5.1lf%S
 GPRINT:my2:AVERAGE:Ave\:%5.1lf%S
 GPRINT:my2:MAX:Max\:%5.1lf%S\l
-STACK:my3#aa3a26:Free Pages    
-GPRINT:my3:LAST:Cur\:%5.1lf%S
-GPRINT:my3:AVERAGE:Ave\:%5.1lf%S
-GPRINT:my3:MAX:Max\:%5.1lf%S\l
-AREA:my4#13333b:Modified Pages
-GPRINT:my4:LAST:Cur\:%5.1lf%S
-GPRINT:my4:AVERAGE:Ave\:%5.1lf%S
-GPRINT:my4:MAX:Max\:%5.1lf%S\l
+
+@@ dirty-rate
+Dirty pages rate
+DEF:my2=<%RRD innodb_buffer_pool_pages_data.gauge %>:bp_total:AVERAGE
+DEF:my4=<%RRD innodb_buffer_pool_pages_dirty.gauge %>:bp_free:AVERAGE
+CDEF:my1=my4,my2,/,100,*
+AREA:my1#5a2b09:Dirty page rate
+GPRINT:my1:LAST:Cur\:%5.1lf[%%]
+GPRINT:my1:AVERAGE:Ave\:%5.1lf[%%]
+GPRINT:my1:MAX:Max\:%5.1lf[%%]\l
+LINE:100
 
 @@ page-io
 Buffer Pool Activity
