@@ -18,28 +18,44 @@
     </div>
   </div> <!-- container -->
 
-<div class="container-fluid graph-nav">
+  <div class="container-fluid plugin-nav">
+    <div class="row">
+      <div class="col-sm-12">
+        <ul class="nav nav-pills">
+          <li class="<: $c.req.param('plugin_identifier') ? "" : "active" :>"><a href="<: $c.req.uri_for('/servers',$merge_nav($term,"")) :>"><span class="glyphicon glyphicon-tasks"></span> 全て表示</a></li>
+        : for $uniq_plugins -> $plugin_identifier {
+          <li class="<: $c.req.param('plugin_identifier') == $plugin_identifier ? "active" : "" :>"><a href="<: $c.req.uri_for('/servers',$merge_nav($term,$plugin_identifier)) :>"><span class="glyphicon glyphicon-tasks"></span> <: $plugin_identifier :></a></li>
+        : }
+        </ul>
+      </div>
+    </div> <!-- row -->
+  </div> <!-- container -->
+
+  <div class="container-fluid graph-nav">
   <div class="row">
     <div class="col-sm-6">
     <div class="btn-toolbar" role="toolbar">
       <div class="btn-group btn-group-sm">
-        <a href="<: $c.req.uri_for('/servers',$host_query()):>" class="btn btn-default <: $term == "day" ? "active" : "" :>">24時間</a>
-        <a href="<: $c.req.uri_for('/servers',$host_query(term=>"week")):>" class="btn btn-default <: $term == "week" ? "active" : "" :>">1週間</a>
-        <a href="<: $c.req.uri_for('/servers',$host_query(term=>"month")):>" class="btn btn-default <: $term == "month" ? "active" : "" :>">1ヶ月</a>
-        <a href="<: $c.req.uri_for('/servers',$host_query(term=>"year")):>" class="btn btn-default <: $term == "year" ? "active" : "" :>">1年間</a>
+        <a href="<: $c.req.uri_for('/servers',$merge_nav("",$plugin_identifier)):>" class="btn btn-default <: $term == "day" ? "active" : "" :>">24時間</a>
+        <a href="<: $c.req.uri_for('/servers',$merge_nav("week",$plugin_identifier)):>" class="btn btn-default <: $term == "week" ? "active" : "" :>">1週間</a>
+        <a href="<: $c.req.uri_for('/servers',$merge_nav("month",$plugin_identifier)):>" class="btn btn-default <: $term == "month" ? "active" : "" :>">1ヶ月</a>
+        <a href="<: $c.req.uri_for('/servers',$merge_nav("year",$plugin_identifier)):>" class="btn btn-default <: $term == "year" ? "active" : "" :>">1年間</a>
       </div>
       <div class="btn-group btn-group-sm">
-        <a href="<: $c.req.uri_for('/servers',$host_query(term=>"1hour")):>" class="btn btn-default <: $term == "1hour" ? "active" : "" :>">1時間</a>
-        <a href="<: $c.req.uri_for('/servers',$host_query(term=>"4hours")):>" class="btn btn-default <: $term == "4hours" ? "active" : "" :>">4時間</a>
-        <a href="<: $c.req.uri_for('/servers',$host_query(term=>"8hours")):>" class="btn btn-default <: $term == "8hours" ? "active" : "" :>">8時間</a>
-        <a href="<: $c.req.uri_for('/servers',$host_query(term=>"3days")):>" class="btn btn-default <: $term == "3days" ? "active" : "" :>">3日間</a>
+        <a href="<: $c.req.uri_for('/servers',$merge_nav("1hour",$plugin_identifier)):>" class="btn btn-default <: $term == "1hour" ? "active" : "" :>">1時間</a>
+        <a href="<: $c.req.uri_for('/servers',$merge_nav("4hours",$plugin_identifier)):>" class="btn btn-default <: $term == "4hours" ? "active" : "" :>">4時間</a>
+        <a href="<: $c.req.uri_for('/servers',$merge_nav("8hours",$plugin_identifier)):>" class="btn btn-default <: $term == "8hours" ? "active" : "" :>">8時間</a>
+        <a href="<: $c.req.uri_for('/servers',$merge_nav("3days",$plugin_identifier)):>" class="btn btn-default <: $term == "3days" ? "active" : "" :>">3日間</a>
       </div>
     </div> <!-- toolbar -->
     </div> <!-- col -->
     <div class="col-sm-6">
       <form class="form form-inline pull-right" role="form" method="get" action="<: $c.req.uri_for('/servers') :>">
       : for $hosts -> $host {
-        <input type="hidden" name="address" value="<: $host.address :>">
+      <input type="hidden" name="address" value="<: $host.address :>">
+      : }
+      : if $plugin_identifier {
+      <input type="hidden" name="plugin_identifier" value="<: $plugin_identifier :>">
       : }
       <input type="hidden" name="term" value="custom">
       <span class="glyphicon glyphicon-calendar"></span>
@@ -94,8 +110,9 @@
 : for $hosts -> $host {
 <td>
   : for $host.metrics_list -> $plugin {
+  : next if $plugin_identifier && $plugin.plugin.plugin_identifier != $plugin_identifier
   <div class="plugin">
-  <h3 class="plugin-name <: $plugin.warn.size() ? "has-warn" : "" :>"><span class="glyphicon glyphicon-tasks"></span> <: $plugin.plugin.plugin :></h3>
+  <h3 class="plugin-name <: $plugin.warn.size() ? "has-warn" : "" :>"><a href="<: $c.req.uri_for('/server',$merge_nav($term,$plugin.plugin.plugin_identifier,$host.address)) :>"><span class="glyphicon glyphicon-tasks"></span> <: $plugin.plugin.plugin :></a></h3>
 
   : for $plugin.warn.keys() -> $warn_key {
     <div class="alert alert-danger" role="alert"><strong><: $warn_key :>:</strong> <: $plugin.warn[$warn_key] :></div>

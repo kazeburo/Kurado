@@ -113,7 +113,21 @@ get '/server' => [qw/fill_config get_server/] => sub {
     );
     my $term = $result->valid('term');
     my $terms = $terms{$term};
-    $c->render('server.tx', { terms => $terms, term => $term, result => $result });
+    my $plugin_identifier = $c->req->param('plugin_identifier');
+
+    my $merge_nav = sub {
+        my ($te, $pl) = @_;
+        my @params = (address => $c->stash->{host}->address);
+        if ( $te eq 'custom' ) {
+            push @params, 'from', $result->valid('from');
+            push @params, 'to', $result->valid('to');
+        }
+        push @params, 'term', $te if $te;
+        push @params, 'plugin_identifier', $pl if $pl;
+        return [@params];
+    };
+
+    $c->render('server.tx', { terms => $terms, term => $term, plugin_identifier => $plugin_identifier, result => $result, merge_nav => $merge_nav });
 };
 
 
@@ -158,10 +172,17 @@ get '/servers' => [qw/fill_config/] => sub {
     # 0 = ok
 
     my @hosts;
+    my %uniq_plugins;
+    my @uniq_plugins;
     for my $address ( @address ) {
         my $host = $self->config_loader->host_by_address($address);
         if ( !$host ) {
             next;
+        }
+        for my $plugin (@{$host->plugins}) {
+            next if $uniq_plugins{$plugin->plugin_identifier};
+            push @uniq_plugins, $plugin->plugin_identifier;
+            $uniq_plugins{$plugin->plugin_identifier} = 1;
         }
         push @hosts, Kurado::Host->new(
             config_loader => $self->config_loader,
@@ -183,11 +204,30 @@ get '/servers' => [qw/fill_config/] => sub {
     );
     my $term = $result->valid('term');
     my $terms = $terms{$term};
+    my $plugin_identifier = $c->req->param('plugin_identifier');
     my @host_query = map { ("address",$_->address) } @hosts;
-    my $host_query = sub {
-        return [@host_query,@_];
+    my $merge_nav = sub {
+        my ($te, $pl, $adr) = @_;
+        my @params;
+        if ( $te eq 'custom' ) {
+            push @params, 'from', $result->valid('from');
+            push @params, 'to', $result->valid('to');
+        }
+        push @params, 'term', $te if $te;
+        push @params, 'plugin_identifier', $pl if $pl;
+        return [address => $adr, @params] if $adr;
+        return [@host_query, @params];
     };
-    $c->render('servers.tx', { terms => $terms, term => $term, result => $result, hosts=>\@hosts, host_query => $host_query });
+
+    $c->render('servers.tx', {
+        terms => $terms,
+        term => $term,
+        plugin_identifier => $plugin_identifier,
+        result => $result,
+        hosts=>\@hosts,
+        merge_nav => $merge_nav,
+        uniq_plugins => \@uniq_plugins,
+    });
 };
 
 
