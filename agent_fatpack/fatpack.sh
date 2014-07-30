@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+
 SRC=bin/kurado_agent
 DST=agent_fatpack/SOURCES/kurado_agent
 export PLENV_VERSION=5.8.5
@@ -31,3 +33,4 @@ rpmbuild -bb agent_fatpack/SPECS/kurado_agent.spec
 rm -f agent_fatpack/SPECS/kurado_agent.spec
 mv agent_fatpack/RPMS/noarch/kurado_agent-$D_VER-$D_REL.noarch.rpm \
      agent_fatpack/RPMS/noarch/kurado_agent-latest.noarch.rpm
+
