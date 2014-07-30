@@ -252,7 +252,7 @@ GPRINT:my3:MAX:Max\:%6.2lf\l
 
 @@ slow
 Slow Queries
-DEF:my1=<%RRD_FOR slow_queries.derive %>:n:AVERAGE
+DEF:my1a=<%RRD_FOR slow_queries.derive %>:n:AVERAGE
 CDEF:my1=my1a,0,1000000000,LIMIT
 AREA:my1#00c000:Slow Queries
 GPRINT:my1:LAST:Cur\:%7.3lf
