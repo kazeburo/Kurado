@@ -231,9 +231,12 @@ GPRINT:my4:MAX:Max\:%7.1lf\l
 
 @@ tmp-obj
 Temporary Objects
-DEF:my1=<%RRD_FOR created_tmp_tables.derive %>:n:AVERAGE
-DEF:my2=<%RRD_FOR created_tmp_disk_tables.derive %>:n:AVERAGE
-DEF:my3=<%RRD_FOR created_tmp_files.derive %>:n:AVERAGE
+DEF:my1a=<%RRD_FOR created_tmp_tables.derive %>:n:AVERAGE
+DEF:my2a=<%RRD_FOR created_tmp_disk_tables.derive %>:n:AVERAGE
+DEF:my3a=<%RRD_FOR created_tmp_files.derive %>:n:AVERAGE
+CDEF:my1=my1a,0,1000000000,LIMIT
+CDEF:my2=my2a,0,1000000000,LIMIT
+CDEF:my3=my3a,0,1000000000,LIMIT
 AREA:my1#ffab02:Created Tmp Tables     
 GPRINT:my1:LAST:Cur\:%6.2lf
 GPRINT:my1:AVERAGE:Ave\:%6.2lf
