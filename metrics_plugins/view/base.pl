@@ -122,8 +122,8 @@ __DATA__
 Throughput
 DEF:ind=<%RRD_FOR traffic-<?= $device ?>-rxbytes.derive %>:n:AVERAGE
 DEF:outd=<%RRD_FOR traffic-<?= $device ?>-txbytes.derive %>:n:AVERAGE
-CDEF:in=ind,0,1250000000,LIMIT,8,*
-CDEF:out=outd,0,1250000000,LIMIT,8,*
+CDEF:in=ind,0,125000000000,LIMIT,8,*
+CDEF:out=outd,0,125000000000,LIMIT,8,*
 AREA:in#00C000:Inbound  
 GPRINT:in:LAST:Cur\:%6.2lf%sbps
 GPRINT:in:AVERAGE:Ave\:%6.2lf%sbps
@@ -274,8 +274,8 @@ DiskIO
 # base.metrics.disk-io-mapper_VolGroup-lv_swap-write-sectors.device   5040    1404873350
 DEF:my1a=<%RRD_FOR disk-io-<?= $device ?>-read-sectors.derive %>:n:AVERAGE
 DEF:my2a=<%RRD_FOR disk-io-<?= $device ?>-write-sectors.derive %>:n:AVERAGE
-CDEF:my1=my1a,0,200000000,LIMIT
-CDEF:my2=my2a,0,200000000,LIMIT
+CDEF:my1=my1a,0,2000000000,LIMIT
+CDEF:my2=my2a,0,2000000000,LIMIT
 AREA:my1#00C000:Read/s 
 GPRINT:my1:LAST:Cur\:%6.1lf%sByte
 GPRINT:my1:AVERAGE:Ave\:%6.1lf%sByte
@@ -289,8 +289,8 @@ GPRINT:my2:MAX:Max\:%6.1lf%sByte\l
 DiskIO Count
 DEF:my1a=<%RRD_FOR disk-io-<?= $device ?>-read-ios.derive %>:n:AVERAGE
 DEF:my2a=<%RRD_FOR disk-io-<?= $device ?>-write-ios.derive %>:n:AVERAGE
-CDEF:my1=my1a,0,1000000,LIMIT
-CDEF:my2=my2a,0,1000000,LIMIT
+CDEF:my1=my1a,0,100000000,LIMIT
+CDEF:my2=my2a,0,100000000,LIMIT
 AREA:my1#c0c0c0:Read  
 GPRINT:my1:LAST:Cur\:%6.1lf%s
 GPRINT:my1:AVERAGE:Ave\:%6.1lf%s
@@ -309,11 +309,14 @@ DEF:used=<%RRD_FOR disk-usage-<?= $device ?>-used.gauge %>:n:AVERAGE
 CDEF:avail_b=avail,1000,*
 CDEF:used_b=used,1000,*
 CDEF:total=avail_b,used_b,+
+CDEF:rate=used_b,total,/
 VDEF:slope=used_b,LSLSLOPE
 VDEF:cons=used_b,LSLINT
 CDEF:lsl2=used_b,POP,slope,COUNT,*,cons,+
-AREA:total#ff99ff:Total
+LINE0:rate#ffffff:Capacity
+GPRINT:rate:LAST:Cur\:%5.2lf[%%]\l
+AREA:total#ff99ff:Total   
 GPRINT:total:LAST:Cur\:%5.2lf%sB
-AREA:used_b#cc00ff:Used 
+AREA:used_b#cc00ff:Used
 GPRINT:used_b:LAST:Cur\:%5.2lf%sB\l
 LINE1:lsl2#00A000:Prediction:dashes=3,6
