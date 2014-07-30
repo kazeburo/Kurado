@@ -60,7 +60,7 @@ sub collect_plugins {
                 if ( $ret[0] !~ m!^(?:metrics|meta)\.! ) {
                     $ret[0] = "metrics.$ret[0]";
                 }
-                if ( $ret[0] !~ m!\.(?:gauge|counter|derive|absolute)$! ) {
+                if ( $ret[0] =~ m!^metrics\.! && $ret[0] !~ m!\.(?:gauge|counter|derive|absolute)$! ) {
                     $ret[0] = "$ret[0].gauge";
                 }
                 $ret[0] = "$plugin_key.$ret[0]";
