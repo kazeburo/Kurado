@@ -122,8 +122,8 @@ __DATA__
 Throughput
 DEF:ind=<%RRD_FOR traffic-<?= $device ?>-rxbytes.derive %>:n:AVERAGE
 DEF:outd=<%RRD_FOR traffic-<?= $device ?>-txbytes.derive %>:n:AVERAGE
-CDEF:in=ind,0,125000000000,LIMIT,8,*
-CDEF:out=outd,0,125000000000,LIMIT,8,*
+CDEF:in=ind,0,5000000000,LIMIT,8,*
+CDEF:out=outd,0,5000000000,LIMIT,8,*
 AREA:in#00C000:Inbound  
 GPRINT:in:LAST:Cur\:%6.2lf%sbps
 GPRINT:in:AVERAGE:Ave\:%6.2lf%sbps

@@ -355,7 +355,7 @@ $fatpacked{"Kurado/Agent/Collector.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
   #    TX: bytes  packets  errors  dropped carrier collsns 
   #    2759531860 774335892 0       0       0       0      
   
-      my @interfaces;
+      my %up_interface;
       for ( split /\n/, $result ) {
           chomp;chomp;
           if ( m!^\d+:\s*([a-z0-9]+):\s<([^>]+)>\s(.*)$! ) {
@@ -364,15 +364,30 @@ $fatpacked{"Kurado/Agent/Collector.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
               my $stats = $3;
               next if $interface eq 'lo'; #skip loopback
               next unless grep { $_ eq "UP" } split /,/, $state; #not up
+              $up_interface{$interface} = 1;
+          }
+      }
   
-              $interface =~ s![^A-Za-z0-9_-]!_!g;
+  # Inter-|   Receive                                                |  Transmit
+  # face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+  #    lo:    1070      18    0    0    0     0          0         0     1070      18    0    0    0     0       0          0
+  #  eth0:10629449294 127380325    0    0    0     0          0  55232809        0       0    0    0    0     0       0          0
+  #  eth1:41604925517001 425181836825    0 14412687    0 1493026          0 3223957693 612845800274320 583467665030    0    0    0     0       0          0
+  #  eth2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+  #  eth3:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+  #eth1.75:31640796844523 412711681474    0    0    0     0          0        14 588482011515562 284949044666    0    0    0     0       0          0
+  
+      open my $fh, '<', '/proc/net/dev' or die "$!\n";
+      my @interfaces;
+      while (<$fh>) {
+          if ( m!^\s*(.+):\s*(.*)$! ) {
+              my $interface = $1;
+              my $stat = $2;
+              next unless exists $up_interface{$interface};
               push @interfaces, $interface;
-  
-              my (undef,undef,undef,$rx_stat,undef,$tx_stat) = split /\\\s*/, $stats;
-              my @rx_stats = split /\s+/, $rx_stat;
-              $self->metrics->{"traffic-${interface}-rxbytes.derive"} = $rx_stats[0];
-              my @tx_stats = split /\s+/, $tx_stat;
-              $self->metrics->{"traffic-${interface}-txbytes.derive"} = $tx_stats[0];
+              my @stats = split /\s+/, $stat;
+              $self->metrics->{"traffic-${interface}-rxbytes.derive"} = $stats[0];
+              $self->metrics->{"traffic-${interface}-txbytes.derive"} = $stats[8];
           }
       }
       $self->meta->{"traffic-interfaces"} = join ",", @interfaces if @interfaces;
