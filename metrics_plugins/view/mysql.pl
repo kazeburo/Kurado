@@ -245,7 +245,7 @@ GPRINT:my1:MAX:Max\:%7.3lf\l
 Threads/connections
 DEF:my1=<%RRD_FOR threads_cached.gauge %>:n:AVERAGE
 DEF:my2=<%RRD_FOR threads_connected.gauge %>:n:AVERAGE
-DEF:my3=<%RRD_FOR Threads_running.gauge %>:n:AVERAGE
+DEF:my3=<%RRD_FOR threads_running.gauge %>:n:AVERAGE
 DEF:my4=<%RRD_FOR threads_created.derive %>:n:AVERAGE
 DEF:my5=<%RRD_FOR connections.derive %>:n:AVERAGE
 LINE1:my1#CC0000:Cached           

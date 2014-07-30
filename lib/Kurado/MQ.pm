@@ -178,8 +178,9 @@ sub timetick_publisher {
     my ($self, $interval, $max_delay, $sub ) = @_;
     my $socket = $self->connect;
 
+    my $delay = int(rand($max_delay));
     my $next_tick = $interval + time;
-    $next_tick = $next_tick - ($next_tick % $interval) + int(rand($max_delay));
+    $next_tick = $next_tick - ($next_tick % $interval) + $delay;
 
     my $s = IO::Select->new($socket);
     $self->{stop_loop} = 0;
@@ -201,6 +202,7 @@ sub timetick_publisher {
         # app
         if ( time >= $next_tick  ) {
             $next_tick = time + $interval;
+            $next_tick = $next_tick - ($next_tick % $interval) + $delay;
             my $msg = $sub->();
             if ( ref $msg ) {
                 $self->enqueue(@$msg);
