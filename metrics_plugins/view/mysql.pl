@@ -138,11 +138,16 @@ GPRINT:my5r:MAX:Max\:%5.1lf[%%]\l
 
 @@ count
 Queries Count
-DEF:my1=<%RRD_FOR com_select.derive %>:n:AVERAGE
-DEF:my2=<%RRD_FOR com_insert.derive %>:n:AVERAGE
-DEF:my3=<%RRD_FOR com_replace.derive %>:n:AVERAGE
-DEF:my4=<%RRD_FOR com_update.derive %>:n:AVERAGE
-DEF:my5=<%RRD_FOR com_delete.derive %>:n:AVERAGE
+DEF:my1a=<%RRD_FOR com_select.derive %>:n:AVERAGE
+DEF:my2a=<%RRD_FOR com_insert.derive %>:n:AVERAGE
+DEF:my3a=<%RRD_FOR com_replace.derive %>:n:AVERAGE
+DEF:my4a=<%RRD_FOR com_update.derive %>:n:AVERAGE
+DEF:my5a=<%RRD_FOR com_delete.derive %>:n:AVERAGE
+CDEF:my1=my1a,0,1000000000,LIMIT
+CDEF:my2=my2a,0,1000000000,LIMIT
+CDEF:my3=my3a,0,1000000000,LIMIT
+CDEF:my4=my4a,0,1000000000,LIMIT
+CDEF:my5=my5a,0,1000000000,LIMIT
 AREA:my1#c0c0c0:Select 
 GPRINT:my1:LAST:Cur\:%7.1lf
 GPRINT:my1:AVERAGE:Ave\:%7.1lf
@@ -166,11 +171,16 @@ GPRINT:my5:MAX:Max\:%7.1lf\l
 
 @@ select-type
 Select Types
-DEF:my1=<%RRD_FOR select_full_join.derive %>:n:AVERAGE
-DEF:my2=<%RRD_FOR select_full_range_join.derive %>:n:AVERAGE
-DEF:my3=<%RRD_FOR select_range.derive %>:n:AVERAGE
-DEF:my4=<%RRD_FOR select_range_check.derive %>:n:AVERAGE
-DEF:my5=<%RRD_FOR select_scan.derive %>:n:AVERAGE
+DEF:my1a=<%RRD_FOR select_full_join.derive %>:n:AVERAGE
+DEF:my2a=<%RRD_FOR select_full_range_join.derive %>:n:AVERAGE
+DEF:my3a=<%RRD_FOR select_range.derive %>:n:AVERAGE
+DEF:my4a=<%RRD_FOR select_range_check.derive %>:n:AVERAGE
+DEF:my5a=<%RRD_FOR select_scan.derive %>:n:AVERAGE
+CDEF:my1=my1a,0,1000000000,LIMIT
+CDEF:my2=my2a,0,1000000000,LIMIT
+CDEF:my3=my3a,0,1000000000,LIMIT
+CDEF:my4=my4a,0,1000000000,LIMIT
+CDEF:my5=my5a,0,1000000000,LIMIT
 AREA:my1#3d1400:Full Join      
 GPRINT:my1:LAST:Cur\:%7.1lf
 GPRINT:my1:AVERAGE:Ave\:%7.1lf
@@ -194,10 +204,14 @@ GPRINT:my5:MAX:Max\:%7.1lf\l
 
 @@ sort
 Sorts
-DEF:my1=<%RRD_FOR sort_rows.derive %>:n:AVERAGE
-DEF:my2=<%RRD_FOR sort_range.derive %>:n:AVERAGE
-DEF:my3=<%RRD_FOR sort_merge_passes.derive %>:n:AVERAGE
-DEF:my4=<%RRD_FOR sort_scan.derive %>:n:AVERAGE
+DEF:my1a=<%RRD_FOR sort_rows.derive %>:n:AVERAGE
+DEF:my2a=<%RRD_FOR sort_range.derive %>:n:AVERAGE
+DEF:my3a=<%RRD_FOR sort_merge_passes.derive %>:n:AVERAGE
+DEF:my4a=<%RRD_FOR sort_scan.derive %>:n:AVERAGE
+CDEF:my1=my1a,0,1000000000,LIMIT
+CDEF:my2=my2a,0,1000000000,LIMIT
+CDEF:my3=my3a,0,1000000000,LIMIT
+CDEF:my4=my4a,0,1000000000,LIMIT
 AREA:my1#ffab02:Sort Rows        
 GPRINT:my1:LAST:Cur\:%7.1lf
 GPRINT:my1:AVERAGE:Ave\:%7.1lf
@@ -236,6 +250,7 @@ GPRINT:my3:MAX:Max\:%6.2lf\l
 @@ slow
 Slow Queries
 DEF:my1=<%RRD_FOR slow_queries.derive %>:n:AVERAGE
+CDEF:my1=my1a,0,1000000000,LIMIT
 AREA:my1#00c000:Slow Queries
 GPRINT:my1:LAST:Cur\:%7.3lf
 GPRINT:my1:AVERAGE:Ave\:%7.3lf
@@ -246,8 +261,10 @@ Threads/connections
 DEF:my1=<%RRD_FOR threads_cached.gauge %>:n:AVERAGE
 DEF:my2=<%RRD_FOR threads_connected.gauge %>:n:AVERAGE
 DEF:my3=<%RRD_FOR threads_running.gauge %>:n:AVERAGE
-DEF:my4=<%RRD_FOR threads_created.derive %>:n:AVERAGE
-DEF:my5=<%RRD_FOR connections.derive %>:n:AVERAGE
+DEF:my4a=<%RRD_FOR threads_created.derive %>:n:AVERAGE
+DEF:my5a=<%RRD_FOR connections.derive %>:n:AVERAGE
+CDEF:my4=my4a,0,1000000000,LIMIT
+CDEF:my5=my5a,0,1000000000,LIMIT
 LINE1:my1#CC0000:Cached           
 GPRINT:my1:LAST:Cur\:%6.1lf
 GPRINT:my1:AVERAGE:Ave\:%6.1lf
@@ -317,10 +334,14 @@ GPRINT:my4r:MAX:Max\:%5.1lf[%%]\l
 
 @@ row-pos-speed
 ROW OPERATIONS Speed
-DEF:my1=<%RRD innodb_rows_inserted.derive %>:ir:AVERAGE
-DEF:my2=<%RRD innodb_rows_updated.derive %>:ur:AVERAGE
-DEF:my3=<%RRD innodb_rows_deleted.derive %>:dr:AVERAGE
-DEF:my4=<%RRD innodb_rows_read.derive %>:rr:AVERAGE
+DEF:my1a=<%RRD innodb_rows_inserted.derive %>:ir:AVERAGE
+DEF:my2a=<%RRD innodb_rows_updated.derive %>:ur:AVERAGE
+DEF:my3a=<%RRD innodb_rows_deleted.derive %>:dr:AVERAGE
+DEF:my4a=<%RRD innodb_rows_read.derive %>:rr:AVERAGE
+CDEF:my1=my1a,0,1000000000,LIMIT
+CDEF:my2=my2a,0,1000000000,LIMIT
+CDEF:my3=my3a,0,1000000000,LIMIT
+CDEF:my4=my4a,0,1000000000,LIMIT
 LINE1:my1#CC0000:Insert
 GPRINT:my1:LAST:Cur\:%6.1lf
 GPRINT:my1:AVERAGE:Ave\:%6.1lf
@@ -372,9 +393,12 @@ LINE:100
 
 @@ page-io
 Buffer Pool Activity
-DEF:my1=<%RRD innodb_pages_created.derive %>:pr:AVERAGE
-DEF:my2=<%RRD innodb_pages_read.derive %>:pw:AVERAGE
-DEF:my3=<%RRD innodb_pages_written.derive %>:pw:AVERAGE
+DEF:my1a=<%RRD innodb_pages_created.derive %>:pr:AVERAGE
+DEF:my2a=<%RRD innodb_pages_read.derive %>:pw:AVERAGE
+DEF:my3a=<%RRD innodb_pages_written.derive %>:pw:AVERAGE
+CDEF:my1=my1a,0,1000000000,LIMIT
+CDEF:my2=my2a,0,1000000000,LIMIT
+CDEF:my3=my3a,0,1000000000,LIMIT
 LINE1:my1#d6883a:Pages Create
 GPRINT:my1:LAST:Cur\:%6.1lf
 GPRINT:my1:AVERAGE:Ave\:%6.1lf
