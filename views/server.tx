@@ -6,7 +6,7 @@
 <div id="subnav">
   <div class="container-fluid">
     <div class="row">
-      <div class="col-sm-8">
+      <div class="col-sm-9">
         <h2 class="subnav-title">
           <a href="/"><span class="subnav-logo"></span></a>
           <a href="<: $c.req.uri_for('/',[service=>$c.stash.host.service]) :>"><: $c.stash.host.service :></a>
@@ -16,7 +16,7 @@
           <span class="host-comments"><: $c.stash.host.comments :></span>
         </h2>
       </div>
-      <div class="col-sm-4" style="text-align: right;">
+      <div class="col-sm-3" style="text-align: right;">
         <a href="/" class="subnav-brand">Kurado - Server Performance Metrics</a>
       </div>
     </div> <!-- row -->
@@ -56,7 +56,7 @@
         <input type="hidden" name="address" value="<: $c.stash.host.address :>">
         <input type="hidden" name="term" value="custom">
         : if $plugin_identifier {
-          <input type="hidden" name="plugin_identifier" value="<: $plugin_identifier :>">
+        <input type="hidden" name="plugin_identifier" value="<: $plugin_identifier :>">
         : }
         <span class="glyphicon glyphicon-calendar"></span>
         <div class="form-group">
