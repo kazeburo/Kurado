@@ -1119,6 +1119,7 @@ $fatpacked{"Kurado/Host.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KUR
                   type => 'view',
               );
               die "$stderr\n" unless $success;
+              warnf $stderr if $stderr;
               $self->parse_metrics_list($stdout);
           };
           if ( $@ ) {
@@ -1157,12 +1158,18 @@ $fatpacked{"Kurado/Host.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KUR
               $line =~ s! *$!!g;
               my ($label, @args) = split /\t/,$line;
               die "odd number of metrics_list meta in '# $line'" if @args % 2;
+              my @meta;
+              while ( @args ) {
+                  my $key = shift(@args);
+                  my $val = shift(@args);
+                  push @meta, {key=>$key,value=>$val};
+              }
               my %meta = @args;
               # label
               push @metrics, {
                   graphs => [],
                   label => $label,
-                  meta => \%meta
+                  meta => \@meta
               };
           }
           else {
@@ -1172,7 +1179,7 @@ $fatpacked{"Kurado/Host.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KUR
                   push @metrics, {
                       graphs => [$line],
                       label => "",
-                      meta => {},
+                      meta => [],
                   };
               }
               else {
@@ -1202,6 +1209,7 @@ $fatpacked{"Kurado/Host.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KUR
               graph => $args->{graph},
           );
           die "$stderr\n" unless $success;
+          warnf $stderr if $stderr;
           my $rrd = Kurado::RRD->new(data_dir => $self->config->data_dir);        
           ($img,$data) = $rrd->graph(
               def => $stdout,
@@ -1231,6 +1239,7 @@ $fatpacked{"Kurado/Host.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KUR
               type => 'fetch',
           );
           die "$stderr\n" unless $success;
+          warnf $stderr if $stderr;
           $body .= $self->parse_fetched_metrics(
               plugin => $args->{plugin},
               result => $stdout
@@ -2159,6 +2168,27 @@ $fatpacked{"Kurado/Plugin.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'K
       return $n.$unit;
   }
   
+  my @info_order = (
+      [qr/^version$/i => 1],
+      [qr/^uptime$/i => 2],
+      [qr/^version/i => 3],
+      [qr/^uptime/i => 4],
+      [qr/version$/i => 5],
+      [qr/uptime$/i => 6],
+  );
+  sub match_order {
+      my $key = shift;
+      my ($hit) = grep { $key =~ m!$_->[0]! } @info_order;
+      return 999 unless $hit;
+      $hit->[1];
+  }
+  sub sort_info {
+      my $self = shift;
+      sort {
+          match_order($a) <=> match_order($b) || $a cmp $b
+      } @_;
+  }
+  
   sub render {
       my $self = shift;
       my $template = shift;
@@ -2545,16 +2575,16 @@ $fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
           $end = $to_time;
           my $diff = $to_time - $from_time;
           if ( $diff < 3 * 60 * 60 ) {
-              $xgrid = 'MINUTE:10:MINUTE:20:MINUTE:10:0:%M';
+              $xgrid = 'MINUTE:10:MINUTE:30:MINUTE:30:0:%H:%M';
           }
           elsif ( $diff < 4 * 24 * 60 * 60 ) {
-              $xgrid = 'HOUR:6:DAY:1:HOUR:6:0:%H';
+              $xgrid = 'HOUR:6:DAY:1:HOUR:6:0:%H:%M';
           }
           elsif ( $diff < 14 * 24 * 60 * 60) {
-              $xgrid = 'DAY:1:DAY:1:DAY:2:86400:%m/%d';
+              $xgrid = 'DAY:1:DAY:7:DAY:2:0:%m/%d';
           }
           elsif ( $diff < 45 * 24 * 60 * 60) {
-              $xgrid = 'DAY:1:WEEK:1:WEEK:1:0:%F';
+              $xgrid = 'DAY:1:WEEK:1:WEEK:1:0:%m/%d';
           }
           else {
               $xgrid = 'WEEK:1:MONTH:1:MONTH:1:2592000:%b';
@@ -2563,12 +2593,12 @@ $fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
       elsif ( $args->{term} eq 'year' ) {
           $period_title = 'Year';
           $period = -1 * 60 * 60 * 24 * 400;
-          $xgrid = 'WEEK:1:MONTH:1:MONTH:1:2592000:%b'
+          $xgrid = 'MONTH:1:MONTH:1:MONTH:1:2592000:%b'
       }
       elsif ( $args->{term} eq 'month' ) {
           $period_title = 'Month';
           $period = -1 * 60 * 60 * 24 * 35;
-          $xgrid = 'DAY:1:WEEK:1:WEEK:1:604800:Week %W'
+          $xgrid = 'WEEK:1:WEEK:1:WEEK:1:604800:Week %W'
       }
       elsif ( $args->{term} eq 'week' ) {
           $period_title = 'Week';
@@ -2578,12 +2608,12 @@ $fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
       elsif ( $args->{term} eq 'day' ) {
           $period_title = 'Day';
           $period = -1 * 60 * 60 * 33; # 33 hours
-          $xgrid = 'HOUR:1:HOUR:2:HOUR:2:0:%H';
+          $xgrid = 'HOUR:2:HOUR:4:HOUR:4:0:%H:%M';
       }
       elsif ( $args->{term} eq '3days' ) {
           $period_title = '3 Days';
           $period = -1 * 60 * 60 * 24 * 3;
-          $xgrid = 'HOUR:6:DAY:1:HOUR:6:0:%H';
+          $xgrid = 'HOUR:6:DAY:1:HOUR:12:0:%H:%M';
       }
       elsif ( $args->{term} eq '8hours' ) {
           $period_title = '8 Hours';
@@ -2597,8 +2627,8 @@ $fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
       }
       else {
           $period_title = 'Hour';
-          $period = -1 * 60 * 60 * 2;
-          $xgrid = 'MINUTE:10:MINUTE:20:MINUTE:10:0:%M';
+          $period = -1 * 60 * 70;
+          $xgrid = 'MINUTE:10:MINUTE:20:MINUTE:10:0:%H:%M';
       }
   
       $period_title = $period_title . ' ' . $args->{host}->hostname;
@@ -2613,20 +2643,22 @@ $fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
           '-s', $period,
           '-e', $end,
           '-v', $title,
-          '--slope-mode',
+          #'--slope-mode',
           '--disable-rrdtool-tag',
-          '--color', 'BACK#'.uc('313131'),
-          '--color', 'CANVAS#'.uc('313131'),
-          '--color', 'GRID#'.uc('686868'),
-          '--color', 'MGRID#'.uc('686868'),
-          '--color', 'FONT#'.uc('c8c8c8'),
-          '--color', 'FRAME#'.uc('686868'),
-          '--color', 'AXIS#'.uc('686868'),
-          '--color', 'SHADEA#'.uc('313131'),
-          '--color', 'SHADEB#'.uc('313131'),
-          '--color', 'ARROW#'.uc('f89407'),
+          '--color', 'BACK#'.uc('f3f3f3'),
+          '--color', 'CANVAS#'.uc('ffffff'),
+          '--color', 'GRID#'.uc('8f8f8f'),
+          '--color', 'MGRID#'.uc('666666'),
+          '--color', 'FONT#'.uc('222222'),
+          '--color', 'FRAME#'.uc('222222'),
+          '--color', 'AXIS#'.uc('111111'),
+          '--color', 'SHADEA#'.uc('dddddd'), #none
+          '--color', 'SHADEB#'.uc('dddddd'), #none
+          '--color', 'ARROW#'.uc('f89407'), 
           '--border', 1,
           '-t', $period_title,
+          '--font-render-mode', 'light',
+          '--font', "TITLE:8:",
           '--font', "AXIS:8:",
           '--font', "LEGEND:8:",
           @$def,
@@ -2673,8 +2705,9 @@ $fatpacked{"Kurado/RRD.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
   # GPRINT:out:AVERAGE:Ave\:%6.2lf%sbps
   # GPRINT:out:MAX:Max\:%6.2lf%sbps\l
       my $def = $args->{def};
-      $def =~ s!<%RRD_FOR\s+(.+?\.(?:gauge|counter|derive|absolute))\s+%>!&rrd_path_for($self,$args->{plugin},$args->{host},$1)!ge;
+      $def =~ s!<%RRD(?:_FOR)?\s+(.+?\.(?:gauge|counter|derive|absolute))\s+%>!&rrd_path_for($self,$args->{plugin},$args->{host},$1)!ge;
       $def =~ s!<%RRD_EXTEND\s+(.+?) +(.+?) +(.+?\.(?:gauge|counter|derive|absolute))\s+%>!&rrd_path_extend($self,$1,$2,$3)!ge;
+      $def =~ s!^DEF:([^:]+):[^:]+:(MAX|AVERAGE|MIN)!DEF:$1:n:$2!gms;
       my @def = grep {$_} grep { $_ !~ m!^\s*#! } split /\n/,$def;
       my $title = shift @def;
       $title,\@def;
@@ -2766,7 +2799,7 @@ $fatpacked{"Kurado/ScoreBoard.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".
       for my $pid ( keys %$stats) {
           my($status,$time,$type) = split /\s+/, $stats->{$pid}, 3;
           if ( $status == 1 && $now - $time > $threshold ) {
-              warnf 'kill zombie $type pid:%s', $type, $pid;
+              warnf 'kill zombie %s pid:%s', $type, $pid;
               kill 'TERM', $pid;
           }
       }
@@ -3363,7 +3396,21 @@ $fatpacked{"Kurado/Web.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
       );
       my $term = $result->valid('term');
       my $terms = $terms{$term};
-      $c->render('server.tx', { terms => $terms, term => $term, result => $result });
+      my $plugin_identifier = $c->req->param('plugin_identifier');
+  
+      my $merge_nav = sub {
+          my ($te, $pl) = @_;
+          my @params = (address => $c->stash->{host}->address);
+          if ( $te eq 'custom' ) {
+              push @params, 'from', $result->valid('from');
+              push @params, 'to', $result->valid('to');
+          }
+          push @params, 'term', $te if $te;
+          push @params, 'plugin_identifier', $pl if $pl;
+          return [@params];
+      };
+  
+      $c->render('server.tx', { terms => $terms, term => $term, plugin_identifier => $plugin_identifier, result => $result, merge_nav => $merge_nav });
   };
   
   
@@ -3408,10 +3455,17 @@ $fatpacked{"Kurado/Web.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
       # 0 = ok
   
       my @hosts;
+      my %uniq_plugins;
+      my @uniq_plugins;
       for my $address ( @address ) {
           my $host = $self->config_loader->host_by_address($address);
           if ( !$host ) {
               next;
+          }
+          for my $plugin (@{$host->plugins}) {
+              next if $uniq_plugins{$plugin->plugin_identifier};
+              push @uniq_plugins, $plugin->plugin_identifier;
+              $uniq_plugins{$plugin->plugin_identifier} = 1;
           }
           push @hosts, Kurado::Host->new(
               config_loader => $self->config_loader,
@@ -3433,11 +3487,30 @@ $fatpacked{"Kurado/Web.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'KURA
       );
       my $term = $result->valid('term');
       my $terms = $terms{$term};
+      my $plugin_identifier = $c->req->param('plugin_identifier');
       my @host_query = map { ("address",$_->address) } @hosts;
-      my $host_query = sub {
-          return [@host_query,@_];
+      my $merge_nav = sub {
+          my ($te, $pl, $adr) = @_;
+          my @params;
+          if ( $te eq 'custom' ) {
+              push @params, 'from', $result->valid('from');
+              push @params, 'to', $result->valid('to');
+          }
+          push @params, 'term', $te if $te;
+          push @params, 'plugin_identifier', $pl if $pl;
+          return [address => $adr, @params] if $adr;
+          return [@host_query, @params];
       };
-      $c->render('servers.tx', { terms => $terms, term => $term, result => $result, hosts=>\@hosts, host_query => $host_query });
+  
+      $c->render('servers.tx', {
+          terms => $terms,
+          term => $term,
+          plugin_identifier => $plugin_identifier,
+          result => $result,
+          hosts=>\@hosts,
+          merge_nav => $merge_nav,
+          uniq_plugins => \@uniq_plugins,
+      });
   };
   
   
