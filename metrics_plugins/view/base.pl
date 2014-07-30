@@ -309,7 +309,7 @@ DEF:used=<%RRD_FOR disk-usage-<?= $device ?>-used.gauge %>:n:AVERAGE
 CDEF:avail_b=avail,1000,*
 CDEF:used_b=used,1000,*
 CDEF:total=avail_b,used_b,+
-CDEF:rate=used_b,total,/
+CDEF:rate=used_b,total,/,100,*
 VDEF:slope=used_b,LSLSLOPE
 VDEF:cons=used_b,LSLINT
 CDEF:lsl2=used_b,POP,slope,COUNT,*,cons,+
