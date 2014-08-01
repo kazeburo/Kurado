@@ -19,6 +19,7 @@
 <script type="text/javascript" src="<: $c.req.uri_for('/js/bootstrap.min.js') :>"></script>
 <script type="text/javascript" src="<: $c.req.uri_for('/js/bootstrap-datetimepicker.min.js') :>"></script>
 <script type="text/javascript" src="<: $c.req.uri_for('/js/bootstrap-switch.min.js') :>"></script>
+<script type="text/javascript" src="<: $c.req.uri_for('/js/ZeroClipboard.min.js') :>"></script>
 <script>
 $(function(){
   $('.form-datetime').datetimepicker({
@@ -115,7 +116,6 @@ $(function(){
 
     $.cookie.json = true;
     var open_new = $.cookie('open-new');
-    console.log(open_new);
     if ( open_new == true ) {
         $("#open-new").attr('checked',true);
     }
@@ -137,6 +137,18 @@ $(function(){
       $.cookie('open-new', state, { expires: 365, path: '/' });
       set_target(state);
       event.preventDefault();
+    });
+
+    ZeroClipboard.config({swfPath:"/img/ZeroClipboard.swf"});
+    var client = new ZeroClipboard($(".copy-button"));
+    var zc=$("#global-zeroclipboard-html-bridge");
+    client.on("ready", function(e) {
+      zc.data("placement","bottom").attr("title","Copy to clipboard").tooltip({delay:10});
+    });
+    client.on("aftercopy", function(e){
+      setTimeout(function(){
+        zc.attr("title","Copied!").tooltip("fixTitle").tooltip("show").attr("title","Copy to clipboard").tooltip("fixTitle");
+      },110);
     });
 });
 </script>

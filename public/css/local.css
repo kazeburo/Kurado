@@ -44,21 +44,30 @@ body {
   color: #eee;
 }
 
-#subnav .subnav-logo {
-  background-image: url("../img/kurado.png");
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  vertical-align: middle;
-}
-#subnav .subnav-logo:before {
-  content: " ";
-}
-
 #subnav .container-fluid .row {
   margin: 0px;
   padding: 5px 0px 5px 0px;
   min-height: 28px;
+}
+
+#subnav .subnav-logo {
+}
+
+#subnav .subnav-logo>span {
+  background-image: url("../img/kurado.png");
+  background-repeat: no-repeat;
+  position: relative;
+  display: block;
+  float: left;
+  width: 20px;
+  height: 20px;
+  margin-top: 0px;
+  margin-right: 2px;
+  content: " ";
+}
+
+#subnav .subnav-logo>span:after {
+  clear: left;
 }
 
 #subnav .subnav-title {
@@ -140,6 +149,12 @@ body {
 .plugin-nav .nav-pills>li.active>a {
   background-color: #f89406;
   box-shadow: inset 0px 3px 5px rgba(0,0,0,0.125);
+}
+.plugin-nav .copy-button {
+  border: none;
+  padding: 5px 10px 4px;
+  font-size: 12px;
+  border-radius: 2px;
 }
 
 #subnav .graph-nav.container-fluid {

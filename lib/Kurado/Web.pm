@@ -122,7 +122,7 @@ get '/server' => [qw/fill_config get_server/] => sub {
             push @params, 'from', $result->valid('from');
             push @params, 'to', $result->valid('to');
         }
-        push @params, 'term', $te if $te;
+        push @params, 'term', $te if $te && $te ne 'day';
         push @params, 'plugin_identifier', $pl if $pl;
         return [@params];
     };
@@ -213,7 +213,7 @@ get '/servers' => [qw/fill_config/] => sub {
             push @params, 'from', $result->valid('from');
             push @params, 'to', $result->valid('to');
         }
-        push @params, 'term', $te if $te;
+        push @params, 'term', $te if $te && $te ne 'day';
         push @params, 'plugin_identifier', $pl if $pl;
         return [address => $adr, @params] if $adr;
         return [@host_query, @params];

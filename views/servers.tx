@@ -8,7 +8,7 @@
     <div class="row">
       <div class="col-sm-8">
         <h2 class="subnav-title">
-          <a href="/"><span class="subnav-logo"></span></a>
+          <a href="/" class="subnav-logo"><span></span></a>
           選択されたサーバ (<: $hosts.size() :>)
         </h2>
       </div>
@@ -21,13 +21,20 @@
   <div class="container-fluid plugin-nav">
     <div class="row">
       <div class="col-sm-12">
-        <ul class="nav nav-pills">
-          <li class="<: $c.req.param('plugin_identifier') ? "" : "active" :>"><a href="<: $c.req.uri_for('/servers',$merge_nav($term,"")) :>"><span class="glyphicon glyphicon-tasks"></span> 全て表示</a></li>
-        : for $uniq_plugins -> $plugin_identifier {
-          <li class="<: $c.req.param('plugin_identifier') == $plugin_identifier ? "active" : "" :>"><a href="<: $c.req.uri_for('/servers',$merge_nav($term,$plugin_identifier)) :>"><span class="glyphicon glyphicon-tasks"></span> <: $plugin_identifier :></a></li>
-        : }
-        </ul>
-      </div>
+        <div class="btn-toolbar" role="toolbar">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-default copy-button" data-clipboard-text="<: $c.req.uri_for('/servers',$merge_nav($term,$plugin_identifier)) :>"><span class="glyphicon glyphicon-paperclip"></span>コピー</button>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <ul class="nav nav-pills">
+              <li class="<: $c.req.param('plugin_identifier') ? "" : "active" :>"><a href="<: $c.req.uri_for('/servers',$merge_nav($term,"")) :>"><span class="glyphicon glyphicon-tasks"></span> 全て表示</a></li>
+              : for $uniq_plugins -> $plugin_identifier {
+              <li class="<: $c.req.param('plugin_identifier') == $plugin_identifier ? "active" : "" :>"><a href="<: $c.req.uri_for('/servers',$merge_nav($term,$plugin_identifier)) :>"><span class="glyphicon glyphicon-tasks"></span> <: $plugin_identifier :></a></li>
+              : }
+            </ul>
+          </div> <!-- btn-group -->
+        </div> <!-- btn-toolbar -->
+      </div> 
     </div> <!-- row -->
   </div> <!-- container -->
 
