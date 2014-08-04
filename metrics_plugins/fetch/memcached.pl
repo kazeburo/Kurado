@@ -49,6 +49,7 @@ if ( $stats{version} && $stats{version} =~ m!^1\.(\d+)! && $1 >= 4 ) {
         }
     }
     $meta{maxconns} = $setting_stats{maxconns};
+    $stats{maxconns} = $setting_stats{maxconns};
 }
 
 
@@ -61,7 +62,7 @@ for my $key (qw/cmd_get cmd_set get_hits get_misses evictions evicted_unfetched/
     my $val = exists $stats{$key} ? $stats{$key} : 'U';
     print "metrics.$key.derive\t$val\t$time\n";
 }
-for my $key (qw/curr_connections bytes limit_maxbytes curr_items/) {
+for my $key (qw/curr_connections bytes limit_maxbytes curr_items maxconns/) {
     my $val = exists $stats{$key} ? $stats{$key} : 'U';
     print "metrics.$key.gauge\t$val\t$time\n";
 }
