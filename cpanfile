@@ -26,6 +26,7 @@ requires 'Unicode::EastAsianWidth';
 requires 'Text::MicroTemplate::DataSection';
 requires 'Text::MicroTemplate::Extended';
 requires 'Parallel::Scoreboard';
+requires 'Furl';
 
 on 'test' => sub {
     requires 'Test::More',     '0.96';
