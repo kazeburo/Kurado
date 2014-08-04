@@ -56,9 +56,14 @@ for my $key (keys %meta) {
     print "meta.$key\t$meta{$key}\t$time\n";
 }
 
-for my $key (qw/read write wait reqs/) {
+for my $key (qw/read write wait/) {
     my $metrics = exists $metrics{$key} ? $metrics{$key} : 'U';
-    print "metrics.$key\t$metrics{$key}\t$time\n";
+    print "metrics.$key.gauge\t$metrics{$key}\t$time\n";
+}
+
+for my $key (qw/reqs/) {
+    my $metrics = exists $metrics{$key} ? $metrics{$key} : 'U';
+    print "metrics.$key.derive\t$metrics{$key}\t$time\n";
 }
 
 

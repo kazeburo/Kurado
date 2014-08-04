@@ -66,10 +66,10 @@ for my $key (keys %meta) {
 
 for my $key (qw/busy idle/) {
     my $metrics = exists $metrics{$key} ? $metrics{$key} : 'U';
-    print "metrics.$key\t$metrics{$key}\t$time\n";
+    print "metrics.$key.gauge\t$metrics{$key}\t$time\n";
 }
 
 if ( $meta{'has-reqs'} ) {
-    print "metrics.reqs\t$metrics{reqs}\t$time\n";
+    print "metrics.reqs.derive\t$metrics{reqs}\t$time\n";
 }
 

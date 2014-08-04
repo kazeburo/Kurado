@@ -57,10 +57,13 @@ my $time = time;
 for my $key (keys %meta) {
     print "meta.$key\t$meta{$key}\t$time\n";
 }
-for my $key (qw/cmd_get cmd_set get_hits get_misses curr_connections 
-                bytes limit_maxbytes evictions evicted_unfetched curr_items/) {
+for my $key (qw/cmd_get cmd_set get_hits get_misses evictions evicted_unfetched/) {
     my $val = exists $stats{$key} ? $stats{$key} : 'U';
-    print "metrics.$key\t$val\t$time\n";
+    print "metrics.$key.derive\t$val\t$time\n";
+}
+for my $key (qw/curr_connections bytes limit_maxbytes curr_items/) {
+    my $val = exists $stats{$key} ? $stats{$key} : 'U';
+    print "metrics.$key.gauge\t$val\t$time\n";
 }
 
 
