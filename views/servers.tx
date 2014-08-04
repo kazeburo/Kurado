@@ -1,7 +1,9 @@
 : cascade base
+: around title -> {
+選択されたサーバ (<: $hosts.size() :>) « Kurado
+: }
+
 : around content -> {
-
-
 <div class="subnav-wrapper">
 <div id="subnav">
   <div class="container-fluid">

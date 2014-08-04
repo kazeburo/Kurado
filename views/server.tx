@@ -1,4 +1,8 @@
 : cascade base
+: around title -> {
+<: $c.stash.host.hostname :> <: $c.stash.host.address :> « <: $c.stash.host.service :> « Kurado
+: }
+
 : around content -> {
 
 
