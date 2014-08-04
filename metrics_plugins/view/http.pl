@@ -77,6 +77,7 @@ under the same terms as Perl itself.
 
 __DATA__
 @@ worker
+Worker Status
 DEF:my1=<%RRD busy.gauge %>:busy:AVERAGE
 DEF:my2=<%RRD idle.gauge %>:idle:AVERAGE
 AREA:my1#00C000:Busy
@@ -89,9 +90,10 @@ GPRINT:my2:AVERAGE:Ave\:%6.1lf
 GPRINT:my2:MAX:Max\:%6.1lf\l
 
 @@ reqs
+Request per sec
 DEF:my1a=<%RRD reqs.derive %>:rps:AVERAGE
 CDEF:my1=my1a,0,10000000,LIMIT
-LINE1:my1#aa0000:Request/sec
+LINE1:my1#aa0000:Request
 GPRINT:my1:LAST:Cur\:%6.2lf
 GPRINT:my1:AVERAGE:Ave\:%6.2lf
 GPRINT:my1:MAX:Max\:%6.2lf\l

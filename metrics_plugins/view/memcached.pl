@@ -74,6 +74,7 @@ under the same terms as Perl itself.
 
 __DATA__
 @@ usage
+Cache usage
 DEF:my1=<%RRD bytes.gauge %>:used:AVERAGE
 DEF:my2=<%RRD bytes.limit_maxbytes %>:max:AVERAGE
 AREA:my1#eaaf00:Used
@@ -86,6 +87,7 @@ GPRINT:my2:AVERAGE:Ave\:%5.2lf%sB
 GPRINT:my2:MAX:Max\:%5.2lf%sB\l
 
 @@ count
+Request count
 DEF:my1a=<%RRD cmd_get.derive %>:cmdset:AVERAGE
 DEF:my2a=<%RRD cmd_set derive %>:cmdget:AVERAGE
 CDEF:my1=my1a,0,100000,LIMIT
@@ -101,6 +103,7 @@ GPRINT:my2:MAX:Max\:%7.1lf\l
 
 
 @@ rate
+Cache hit rate
 DEF:hits=<%RRD get_hits.derive %>:gethits:AVERAGE
 DEF:misses=<%RRD get_misses.derive %>:getmisses:AVERAGE
 CDEF:total=hits,misses,+
@@ -112,6 +115,7 @@ GPRINT:rate:MAX:Max\:%5.1lf[%%]\l
 LINE:100
 
 @@ conn
+Connections
 DEF:conn=<%RRD curr_connections.gauge %>:n:AVERAGE
 DEF:my2=<%RRD maxconns.gauge %>:n:AVERAGE
 AREA:conn#00C000:Connection    
@@ -121,8 +125,8 @@ GPRINT:conn:MAX:Max\:%7.1lf\l
 LINE1:my2#C00000:Max Connection
 GPRINT:my2:LAST:Cur\:%7.1lf\l
 
-
 @@ evictions
+Evictions
 DEF:my1=<%RRD evictions.gauge %>:evt_total:AVERAGE
 DEF:my2=<%RRD evicted_unfetched.gauge %>:evt_unfetched:AVERAGE
 AREA:my1#800040:Evictions Total    

@@ -70,6 +70,7 @@ under the same terms as Perl itself.
 
 __DATA__
 @@ processes
+Connections
 DEF:my1=<%RRD read.gauge %>:read:AVERAGE
 DEF:my2=<%RRD write.gauge %>:write:AVERAGE
 DEF:my3=<%RRD wait.gauge %>:wait:AVERAGE
@@ -87,9 +88,10 @@ GPRINT:my3:AVERAGE:Ave\:%7.1lf
 GPRINT:my3:MAX:Max\:%7.1lf\l
 
 @@ reqs
+Request per sec
 DEF:my1a=<%RRD reqs.derive %>:request:AVERAGE
 CDEF:my1=my1a,0,250000,LIMIT
-LINE1:my1#00C000:Request/sec
+LINE1:my1#00C000:Request
 GPRINT:my1:LAST:Cur\:%7.1lf
 GPRINT:my1:AVERAGE:Ave\:%7.1lf
 GPRINT:my1:MAX:Max\:%7.1lf\l
