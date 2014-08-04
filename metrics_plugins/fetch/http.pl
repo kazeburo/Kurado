@@ -49,10 +49,10 @@ foreach my $line ( split /[\r\n]+/, $body ) {
     if ( $line =~ /^Idle.+: (\d+)/ ) {
         $metrics{idle} = $1;
     }
-    if ( $line =~ /^Uptime.+: (\d+)/ ) {
+    if ( $line =~ /^Uptime\s*: (\d+)/ ) {
         $meta{uptime} = $1;
     }
-    if ( $line =~ /^Total Accesses.+: (\d+)/ ) {
+    if ( $line =~ /^Total Accesses\s*: (\d+)/ ) {
         $meta{reqs} = 1;
         $metrics{reqs} = $1;
     }
