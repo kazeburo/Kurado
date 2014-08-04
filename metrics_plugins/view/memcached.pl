@@ -76,7 +76,7 @@ __DATA__
 @@ usage
 Cache usage
 DEF:my1=<%RRD bytes.gauge %>:used:AVERAGE
-DEF:my2=<%RRD bytes.limit_maxbytes.gauge %>:max:AVERAGE
+DEF:my2=<%RRD limit_maxbytes.gauge %>:max:AVERAGE
 AREA:my1#eaaf00:Used
 GPRINT:my1:LAST:Cur\:%5.2lf%sB
 GPRINT:my1:AVERAGE:Ave\:%5.2lf%sB
@@ -127,7 +127,7 @@ GPRINT:my2:LAST:Cur\:%7.1lf\l
 
 @@ evictions
 Evictions
-DEF:my1=<%RRD evictions.drive %>:evt_total:AVERAGE
+DEF:my1=<%RRD evictions.derive %>:evt_total:AVERAGE
 DEF:my2=<%RRD evicted_unfetched.derive %>:evt_unfetched:AVERAGE
 AREA:my1#800040:Evictions Total    
 GPRINT:my1:LAST:Cur\:%6.1lf
