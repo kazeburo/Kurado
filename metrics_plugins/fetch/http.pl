@@ -53,7 +53,7 @@ foreach my $line ( split /[\r\n]+/, $body ) {
         $meta{uptime} = $1;
     }
     if ( $line =~ /^Total Accesses\s*: (\d+)/ ) {
-        $meta{reqs} = 1;
+        $meta{'has-reqs'} = 1;
         $metrics{reqs} = $1;
     }
 }
@@ -69,7 +69,7 @@ for my $key (qw/busy idle/) {
     print "metrics.$key\t$metrics{$key}\t$time\n";
 }
 
-if ( $meta{reqs} ) {
+if ( $meta{'has-reqs'} ) {
     print "metrics.reqs\t$metrics{reqs}\t$time\n";
 }
 
