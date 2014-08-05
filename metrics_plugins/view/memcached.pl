@@ -88,8 +88,8 @@ GPRINT:my2:MAX:Max\:%5.2lf%sB\l
 
 @@ count
 Request count
-DEF:my1a=<%RRD cmd_get.derive %>:cmdset:AVERAGE
-DEF:my2a=<%RRD cmd_set.derive %>:cmdget:AVERAGE
+DEF:my1a=<%RRD cmd_set.derive %>:cmdset:AVERAGE
+DEF:my2a=<%RRD cmd_get.derive %>:cmdget:AVERAGE
 CDEF:my1=my1a,0,100000,LIMIT
 CDEF:my2=my2a,0,100000,LIMIT
 AREA:my1#00C000:Set
