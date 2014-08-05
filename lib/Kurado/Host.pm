@@ -278,8 +278,20 @@ sub status {
     my $has_warn = $self->storage->has_warn(
         address => $self->address,
     );
-        
-    return $has_warn ? 1 : 0;
+    return 1 if $has_warn;
+
+    for my $plugin ( @{$self->host->plugins} ) {
+        next if $self->config_loader->has_fetch_plugin($plugin->plugin);
+        my $last_received = $self->storage->get_last_recieved(
+            plugin => $plugin,
+            address => $self->address,            
+        );
+        if ( !$last_received || $last_received < time - $LAST_RECEIVED_EXPIRES ) {
+            return 1;
+        }        
+    }
+
+    return 0;
 }
 
 1;
