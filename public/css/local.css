@@ -157,6 +157,13 @@ body {
   border-radius: 2px;
 }
 
+.plugin-nav li.has-warn a,
+.plugin-nav li.has-warn a:hover {
+  color: #ff0702;
+  text-decoration: none;
+}
+
+
 #subnav .graph-nav.container-fluid {
   background-color: #272b30;
 }
