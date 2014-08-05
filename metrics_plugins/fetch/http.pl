@@ -35,6 +35,8 @@ my $res = $furl->request(
 die "server-status failed: " .$res->status_line."\n"
     unless $res->is_success;
 
+my $time = time;
+
 my %meta;
 if ( my $server_version = $res->header('Server') ) {
     $meta{server} = $server_version;
@@ -50,6 +52,8 @@ foreach my $line ( split /[\r\n]+/, $body ) {
         $metrics{idle} = $1;
     }
     if ( $line =~ /^Uptime\s*: (\d+)/ ) {
+        my $uptime = $1;
+        $uptime = $time - $uptime if $uptime > 20*365*86400;
         $meta{uptime} = $1;
     }
     if ( $line =~ /^Total Accesses\s*: (\d+)/ ) {
@@ -58,7 +62,6 @@ foreach my $line ( split /[\r\n]+/, $body ) {
     }
 }
 
-my $time = time;
 for my $key (keys %meta) {
     print "meta.$key\t$meta{$key}\t$time\n";
 }
