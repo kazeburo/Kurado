@@ -97,10 +97,12 @@ $(function(){
             if ( data[ip] == 2 ) {
               tag.addClass('glyphicon-warning-sign');
               tag.addClass("host-status-crit");
+              $(this).parent().addClass('danger');
             }
             else if ( data[ip] == 1 ) {
               tag.addClass('glyphicon-fire');
               tag.addClass("host-status-warn");
+              $(this).parent().addClass('warning');
             }
             else {
               tag.addClass('glyphicon-ok');
