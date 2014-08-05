@@ -54,7 +54,7 @@ foreach my $line ( split /[\r\n]+/, $body ) {
     if ( $line =~ /^Uptime\s*: (\d+)/ ) {
         my $uptime = $1;
         $uptime = $time - $uptime if $uptime > 20*365*86400;
-        $meta{uptime} = $1;
+        $meta{uptime} = $uptime;
     }
     if ( $line =~ /^Total Accesses\s*: (\d+)/ ) {
         $meta{'has-reqs'} = 1;
