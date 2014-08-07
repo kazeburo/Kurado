@@ -44,7 +44,7 @@ sub read : method {
     my $timeout_at = Time::HiRes::time + $timeout;
     my $buf = '';
     my $n = $self->do_io(undef, \$buf, $READ_BYTES, 0, $timeout_at);
-    die $! != 0 ? "$!\n" : "timeout\n" if !defined $n;
+    die $! != 0 ? "$!\n" : "timeout\n" if !$n;
     return $buf;
 }
 
@@ -69,7 +69,7 @@ sub write : method {
     my $off = 0;
     while (my $len = length($buf) - $off) {
         my $n = $self->do_io(1, $buf, $len, $off, $timeout_at);
-        die $! != 0 ? "$!\n" : "timeout\n" if !defined $n;
+        die $! != 0 ? "$!\n" : "timeout\n" if !$n;
         $off += $n;
     }
     return length $buf;    
@@ -93,6 +93,7 @@ sub do_io {
     }
     unless ((! defined($ret)
                  && ($! == EINTR || $! == EAGAIN || $! == EWOULDBLOCK))) {
+        return $ret if defined $ret;
         return;
     }
     # wait for data
