@@ -43,7 +43,7 @@ my %meta;
     die "could not retrieve couter status from $host:$port" unless $raw_stats;
     foreach my $line ( split /\r?\n/, $raw_stats ) {
         if ( $line =~ /^client_http\.(all|miss|nm|hit)_median_svc_time\s*=\s*([0-9\.]+) seconds$/ ) {
-            $stats{'svc-time.'.$1} = int($2) * 1000; #msec
+            $stats{'svc-time.'.$1} = int($2 * 1000); #msec
         }
     }
 }
