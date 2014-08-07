@@ -48,6 +48,20 @@ sub read : method {
     return $buf;
 }
 
+sub read_until_close {
+    my ($self, $timeout) = @_;
+    $timeout ||= $self->{timeout};
+    my $timeout_at = Time::HiRes::time + $timeout;
+    my $buf = '';
+    while (1) {
+        my $off = length($buf)
+        my $n = $self->do_io(undef, \$buf, $READ_BYTES, $off, $timeout_at);
+        die $! != 0 ? "$!\n" : "timeout\n" if !defined $n;
+        last if $n == 0; #close
+    }
+    return $buf;
+}
+
 sub write : method {
     my ($self, $buf, $timeout) = @_;
     $timeout ||= $self->{timeout};

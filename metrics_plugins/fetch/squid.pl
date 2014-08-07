@@ -15,16 +15,16 @@ my $host = $plugin->address;
 my ($port) = @{$plugin->plugin_arguments};
 $port ||= 3128;
 
-my $client = Kurado::TinyTCP->new(
-    server => $host . ':' . $port,
-    timeout => 3.5
-);
 
 my %stats;
 my %meta;
 {
+    my $client = Kurado::TinyTCP->new(
+        server => $host . ':' . $port,
+        timeout => 3.5
+    );
     $client->write("GET cache_object://localhost/counters HTTP/1.0$CRLF$CRLF",1);
-    my $raw_stats = $client->read(1);
+    my $raw_stats = $client->read_until_close(1);
     die "could not retrieve couter status from $host:$port" unless $raw_stats;
     foreach my $line ( split /\r?\n/, $raw_stats ) {
         if ( $line =~ /^client_http\.(requests|hits|errors)\s*=\s*(\d+)$/ ) {
@@ -34,8 +34,12 @@ my %meta;
 }
 
 {
+    my $client = Kurado::TinyTCP->new(
+        server => $host . ':' . $port,
+        timeout => 3.5
+    );
     $client->write("GET cache_object://localhost/5min HTTP/1.0$CRLF$CRLF",1);
-    my $raw_stats = $client->read(1);
+    my $raw_stats = $client->read_until_close(1);
     die "could not retrieve couter status from $host:$port" unless $raw_stats;
     foreach my $line ( split /\r?\n/, $raw_stats ) {
         if ( $line =~ /^client_http\.(all|miss|nm|hit)_median_svc_time\s*=\s*(\d+)$/ ) {
@@ -45,8 +49,12 @@ my %meta;
 }
 
 {
+    my $client = Kurado::TinyTCP->new(
+        server => $host . ':' . $port,
+        timeout => 3.5
+    );
     $client->write("GET cache_object://localhost/info HTTP/1.0$CRLF$CRLF",1);
-    my $raw_stats = $client->read(1);
+    my $raw_stats = $client->read_until_close(1);
     die "could not retrieve couter status from $host:$port" unless $raw_stats;
     foreach my $line ( split /\r?\n/, $raw_stats ) {
         if ( $line =~ m!^Squid Object Cache: Version (.+)$! ) {
@@ -56,10 +64,10 @@ my %meta;
             $meta{uptime} = int($1);
         }
         if ( $line =~ m!^\s*Maximum number of file descriptors:\s*(\d+)$! ) {
-            $stat{'file-descriptors.max'} = $1;
+            $stats{'file-descriptors.max'} = $1;
         }
         if ( $line =~ m!^\s*Number of file desc currently in use:\s*(\d+)$! ) {
-            $stat{'file-descriptors.used'} = $1;
+            $stats{'file-descriptors.used'} = $1;
         }
         if ( $line =~ m!\s*(\d+) StoreEntries$! ) {
             $stats{'store-entries.total'} = $1;
