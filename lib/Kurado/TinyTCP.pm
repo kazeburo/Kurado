@@ -44,8 +44,8 @@ sub read : method {
     my $timeout_at = Time::HiRes::time + $timeout;
     my $buf = '';
     my $n = $self->do_io(undef, \$buf, $READ_BYTES, 0, $timeout_at);
-    die $! != 0 ? "$!\n" : "timeout\n" if !defined $n;
-    die "socket closed" if $n == 0;
+    die $! != 0 ? "$!\n" : "timeout or socket closed\n" if !defined $n;
+    die "Socket closed by remote server: $!" if $n == 0;
     return $buf;
 }
 
@@ -71,7 +71,7 @@ sub write : method {
     while (my $len = length($buf) - $off) {
         my $n = $self->do_io(1, $buf, $len, $off, $timeout_at);
         die $! != 0 ? "$!\n" : "timeout\n" if !$n;
-        die "socket closed" if $n == 0;
+        die "Socket closed by remote server: $!" if $n == 0;
         $off += $n;
     }
     return length $buf;    
@@ -84,18 +84,21 @@ sub do_io {
     my ($self, $is_write, $buf, $len, $off, $timeout_at) = @_;
     my $sock = $self->{sock};
     my $ret;
+    local $SIG{PIPE} = 'IGNORE';    
+
+    if ( !$is_write ){ #read
+        goto DO_SELECT;
+    }
  DO_READWRITE:
     # try to do the IO
     if ($is_write) {
-        $ret = syswrite $sock, $buf, $len, $off
+        defined($ret = syswrite $sock, $buf, $len, $off)
             and return $ret;
     } else {
-        $ret = sysread $sock, $$buf, $len, $off
+        defined($ret = sysread $sock, $$buf, $len, $off)
             and return $ret;
     }
-    unless ((! defined($ret)
-                 && ($! == EINTR || $! == EAGAIN || $! == EWOULDBLOCK))) {
-        return $ret if defined $ret;
+    if ( $! != EINTR && $! != EAGAIN && $! != EWOULDBLOCK ) {
         return;
     }
     # wait for data
