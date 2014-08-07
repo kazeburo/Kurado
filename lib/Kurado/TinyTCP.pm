@@ -44,7 +44,8 @@ sub read : method {
     my $timeout_at = Time::HiRes::time + $timeout;
     my $buf = '';
     my $n = $self->do_io(undef, \$buf, $READ_BYTES, 0, $timeout_at);
-    die $! != 0 ? "$!\n" : "timeout\n" if !$n;
+    die $! != 0 ? "$!\n" : "timeout\n" if !defined $n;
+    die "socket closed" if $n == 0;
     return $buf;
 }
 
@@ -70,6 +71,7 @@ sub write : method {
     while (my $len = length($buf) - $off) {
         my $n = $self->do_io(1, $buf, $len, $off, $timeout_at);
         die $! != 0 ? "$!\n" : "timeout\n" if !$n;
+        die "socket closed" if $n == 0;
         $off += $n;
     }
     return length $buf;    
