@@ -77,7 +77,7 @@ __DATA__
 Number of request
 DEF:my1a=<%RRD client-http.requests.derive %>:request:AVERAGE
 DEF:my2a=<%RRD client-http.hits.derive %>:httphit:AVERAGE
-DEF:my3a=<%RRD client-http.errors.derive%>:httperror:AVERAGE
+DEF:my3a=<%RRD client-http.errors.derive %>:httperror:AVERAGE
 CDEF:my1=my1a,0,100000,LIMIT
 CDEF:my2=my2a,0,100000,LIMIT
 CDEF:my3=my3a,0,100000,LIMIT
@@ -98,7 +98,7 @@ GPRINT:my3:MAX:Max\:%6.1lf\l
 Cache hit ratio
 DEF:my1=<%RRD client-http.requests.derive %>:request:AVERAGE
 DEF:my2=<%RRD client-http.hits.derive %>:httphit:AVERAGE
-CDEF:my3=my2,my1,/,0,100,LIMIT
+CDEF:my3=my2,my1,/,100,*,0,100,LIMIT
 AREA:my3#990000:Ratio
 GPRINT:my3:LAST:Cur\:%5.1lf[%%]
 GPRINT:my3:AVERAGE:Ave\:%5.1lf[%%]
@@ -110,23 +110,23 @@ Response time (msec)
 DEF:my1=<%RRD svc-time.all.gauge %>:allsvc:AVERAGE
 DEF:my2=<%RRD svc-time.miss.gauge %>:misssvc:AVERAGE
 DEF:my3=<%RRD svc-time.nm.gauge %>:nmsvc:AVERAGE
-DEF:my4=<%RRD svc-time.hit.gauge%>:hitsvc:AVERAGE
+DEF:my4=<%RRD svc-time.hit.gauge %>:hitsvc:AVERAGE
 LINE1:my1#CC0000:All        
-GPRINT:my1:LAST:Cur\:%4.0lf
-GPRINT:my1:AVERAGE:Ave\:%4.0lf
-GPRINT:my1:MAX:Max\:%4.0lf\l
+GPRINT:my1:LAST:Cur\:%6.2lf
+GPRINT:my1:AVERAGE:Ave\:%6.2lf
+GPRINT:my1:MAX:Max\:%6.2lf\l
 LINE1:my2#000080:Miss       
-GPRINT:my2:LAST:Cur\:%4.0lf
-GPRINT:my2:AVERAGE:Ave\:%4.0lf
-GPRINT:my2:MAX:Max\:%4.0lf\l
+GPRINT:my2:LAST:Cur\:%6.2lf
+GPRINT:my2:AVERAGE:Ave\:%6.2lf
+GPRINT:my2:MAX:Max\:%6.2lf\l
 LINE1:my3#008080:NotModified
-GPRINT:my3:LAST:Cur\:%4.0lf
-GPRINT:my3:AVERAGE:Ave\:%4.0lf
-GPRINT:my3:MAX:Max\:%4.0lf\l
+GPRINT:my3:LAST:Cur\:%6.2lf
+GPRINT:my3:AVERAGE:Ave\:%6.2lf
+GPRINT:my3:MAX:Max\:%6.2lf\l
 LINE1:my4#800080:Hit        
-GPRINT:my4:LAST:Cur\:%4.0lf
-GPRINT:my4:AVERAGE:Ave\:%4.0lf
-GPRINT:my4:MAX:Max\:%4.0lf\l
+GPRINT:my4:LAST:Cur\:%6.2lf
+GPRINT:my4:AVERAGE:Ave\:%6.2lf
+GPRINT:my4:MAX:Max\:%6.2lf\l
 
 @@ items
 Cache items
@@ -145,9 +145,9 @@ GPRINT:my2:MAX:Max\:%8.0lf\l
 Used File Descriptors
 DEF:my1=<%RRD file-descriptors.used.gauge %>:n:AVERAGE
 DEF:my2=<%RRD file-descriptors.max.gauge %>:n:AVERAGE
-AREA:my1#00C000:used file descriptors
-GPRINT:my1:LAST:Cur\:%7.1lf
-GPRINT:my1:AVERAGE:Ave\:%7.1lf
-GPRINT:my1:MAX:Max\:%7.1lf\l
 LINE1:my2#C00000:Max file descriptors 
-GPRINT:my2:LAST:Cur\:%7.1lf\l
+GPRINT:my2:LAST:Cur\:%7.0lf\l
+AREA:my1#00C000:Used file descriptors
+GPRINT:my1:LAST:Cur\:%7.0lf
+GPRINT:my1:AVERAGE:Ave\:%7.0lf
+GPRINT:my1:MAX:Max\:%7.0lf\l

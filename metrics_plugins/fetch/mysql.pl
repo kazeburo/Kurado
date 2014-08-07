@@ -87,7 +87,9 @@ if ( exists $status{innodb_page_size} ) {
 }
 else {
     # MySQL 4 Innodb
-    my $engine_row = $dbh->selectrow_hashref('show /*!50000 ENGINE*/ innodb status',undef);
+    my $engine_row = eval {
+        $dbh->selectrow_hashref('show /*!50000 ENGINE*/ innodb status',undef);
+    };
     if ( my $innodb_status = $engine_row->{Status} ) {
         $variable{innodb} = 1;
         $status{innodb_page_size} = 16384;
