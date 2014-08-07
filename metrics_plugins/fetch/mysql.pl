@@ -86,8 +86,9 @@ if ( exists $status{innodb_page_size} ) {
 
 }
 else {
-    # MySQL 4 Innodb
+    # MySQL 4 Innodb or no Innodb
     my $engine_row = eval {
+        local $dbh->{PrintError} = 0;
         $dbh->selectrow_hashref('show /*!50000 ENGINE*/ innodb status',undef);
     };
     if ( my $innodb_status = $engine_row->{Status} ) {
