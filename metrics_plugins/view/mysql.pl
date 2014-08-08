@@ -417,10 +417,14 @@ GPRINT:my3:MAX:Max\:%6.1lf\l
 
 @@ innodb-io
 InnoDB I/O
-DEF:file_reads=<%RRD innodb_data_reads.derive %>:file_reads:AVERAGE
-DEF:file_writes=<%RRD innodb_data_writes.derive %>:file_writes:AVERAGE
-DEF:log_writes=<%RRD innodb_log_writes.derive %>:log_writes:AVERAGE
-DEF:file_fsyncs=<%RRD innodb_data_fsyncs.derive %>:file_fsyncs:AVERAGE
+DEF:my1=<%RRD innodb_data_reads.derive %>:file_reads:AVERAGE
+DEF:my2=<%RRD innodb_data_writes.derive %>:file_writes:AVERAGE
+DEF:my3=<%RRD innodb_log_writes.derive %>:log_writes:AVERAGE
+DEF:my4=<%RRD innodb_data_fsyncs.derive %>:file_fsyncs:AVERAGE
+CDEF:file_reads=my1,0,100000,LIMIT
+CDEF:file_writes=my2,0,100000,LIMIT
+CDEF:log_writes=my3,0,100000,LIMIT
+CDEF:file_fsyncs=my4,0,100000,LIMIT
 AREA:file_reads#402204:File Reads 
 GPRINT:file_reads:LAST:Cur\: %5.1lf
 GPRINT:file_reads:AVERAGE:Ave\: %5.1lf
