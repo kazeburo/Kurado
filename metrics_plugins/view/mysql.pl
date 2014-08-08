@@ -421,19 +421,19 @@ DEF:file_reads=<%RRD innodb_data_reads.derive %>:file_reads:AVERAGE
 DEF:file_writes=<%RRD innodb_data_writes.derive %>:file_writes:AVERAGE
 DEF:log_writes=<%RRD innodb_log_writes.derive %>:log_writes:AVERAGE
 DEF:file_fsyncs=<%RRD innodb_data_fsyncs.derive %>:file_fsyncs:AVERAGE
-LINE1:file_reads#402204:File Reads 
+AREA:file_reads#402204:File Reads 
 GPRINT:file_reads:LAST:Cur\: %5.1lf
 GPRINT:file_reads:AVERAGE:Ave\: %5.1lf
 GPRINT:file_reads:MAX:Max\: %5.1lf\l
-LINE1:file_writes#B3092B:File Writes
+STACK:file_writes#B3092B:File Writes
 GPRINT:file_writes:LAST:Cur\: %5.1lf
 GPRINT:file_writes:AVERAGE:Ave\: %5.1lf
 GPRINT:file_writes:MAX:Max\: %5.1lf\l
-LINE1:log_writes#FFBF00:Log Writes 
+STACK:log_writes#FFBF00:Log Writes 
 GPRINT:log_writes:LAST:Cur\: %5.1lf
 GPRINT:log_writes:AVERAGE:Ave\: %5.1lf
 GPRINT:log_writes:MAX:Max\: %5.1lf\l
-LINE1:file_fsyncs#0ABFCC:File Fsyncs
+STACK:file_fsyncs#0ABFCC:File Fsyncs
 GPRINT:file_fsyncs:LAST:Cur\: %5.1lf
 GPRINT:file_fsyncs:AVERAGE:Ave\: %5.1lf
 GPRINT:file_fsyncs:MAX:Max\: %5.1lf\l
