@@ -133,7 +133,7 @@ else {
                 $status{innodb_data_writes} = $2;
                 $status{innodb_data_fsyncs} = $3;
             }
-            if ( $line = ~ m!^(\d+) log i/o's done, ! ) {
+            if ( $line =~ m!^(\d+) log i/o's done, ! ) {
                 $status{innodb_log_writes} = $1;
             }
         } # for

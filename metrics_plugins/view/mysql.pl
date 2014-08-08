@@ -416,6 +416,7 @@ GPRINT:my3:AVERAGE:Ave\:%6.1lf
 GPRINT:my3:MAX:Max\:%6.1lf\l
 
 @@ innodb-io
+InnoDB I/O
 DEF:file_reads=<%RRD innodb_data_reads.derive %>:file_reads:AVERAGE
 DEF:file_writes=<%RRD innodb_data_writes.derive %>:file_writes:AVERAGE
 DEF:log_writes=<%RRD innodb_log_writes.derive %>:log_writes:AVERAGE
