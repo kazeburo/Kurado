@@ -81,7 +81,7 @@ sub metrics_list {
     }
     if ( $innodb ) {
         $list .= join("\t",'#MySQL InnoDB'.$port,@innodb)."\n";
-        $list .= "$_\n" for qw/row-ops-rate row-pos-speed cache-rate bp-usage dirty-rate page-io/;
+        $list .= "$_\n" for qw/row-ops-rate row-pos-speed cache-rate bp-usage dirty-rate page-io innodb-io/;
     }
     print $list;
 }
@@ -415,3 +415,24 @@ GPRINT:my3:LAST:Cur\:%6.1lf
 GPRINT:my3:AVERAGE:Ave\:%6.1lf
 GPRINT:my3:MAX:Max\:%6.1lf\l
 
+@@ innodb-io
+DEF:file_reads=<%RRD innodb_data_reads.derive %>:file_reads:AVERAGE
+DEF:file_writes=<%RRD innodb_data_writes.derive %>:file_writes:AVERAGE
+DEF:log_writes=<%RRD innodb_log_writes.derive %>:log_writes:AVERAGE
+DEF:file_fsyncs=<%RRD innodb_data_fsyncs.derive %>:file_fsyncs:AVERAGE
+LINE1:file_reads#402204:File Reads 
+GPRINT:file_reads:LAST:Cur\: %5.1lf
+GPRINT:file_reads:AVERAGE:Ave\: %5.1lf
+GPRINT:file_reads:MAX:Max\: %5.1lf\l
+LINE1:file_writes#B3092B:File Writes
+GPRINT:file_writes:LAST:Cur\: %5.1lf
+GPRINT:file_writes:AVERAGE:Ave\: %5.1lf
+GPRINT:file_writes:MAX:Max\: %5.1lf\l
+LINE1:log_writes#FFBF00:Log Writes 
+GPRINT:log_writes:LAST:Cur\: %5.1lf
+GPRINT:log_writes:AVERAGE:Ave\: %5.1lf
+GPRINT:log_writes:MAX:Max\: %5.1lf\l
+LINE1:file_fsyncs#0ABFCC:File Fsyncs
+GPRINT:file_fsyncs:LAST:Cur\: %5.1lf
+GPRINT:file_fsyncs:AVERAGE:Ave\: %5.1lf
+GPRINT:file_fsyncs:MAX:Max\: %5.1lf\l

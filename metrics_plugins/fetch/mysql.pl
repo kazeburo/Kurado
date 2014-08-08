@@ -128,6 +128,14 @@ else {
                 $status{innodb_pages_created} = $2;
                 $status{innodb_pages_written} = $3;
             }
+            if ( $line =~ /^(\d+) OS file reads, (\d+) OS file writes, (\d+) OS fsyncs/ ) {
+                $status{innodb_data_reads} = $1;
+                $status{innodb_data_writes} = $2;
+                $status{innodb_data_fsyncs} = $3;
+            }
+            if ( $line = ~ m!^(\d+) log i/o's done, ! ) {
+                $status{innodb_log_writes} = $1;
+            }
         } # for
       
     } # status
@@ -149,7 +157,7 @@ $meta{$_} = $variable{$_} for grep { exists $variable{$_} }
        max_connect_errors thread_cache_size
        innodb innodb_version innodb_buffer_pool_size innodb_flush_method
        innodb_support_xa innodb_flush_log_at_trx_commit innodb_doublewrite
-       innodb_file_per_table innodb_file_format innodb_io_capacity 
+       innodb_file_per_table innodb_file_format innodb_io_capacity innodb_io_capacity_max
        innodb_page_size
        replication replication_slave_io_running replication_slave_sql_running 
        replication_master_host replication_master_port
@@ -163,6 +171,7 @@ for (qw/created_tmp_tables created_tmp_disk_tables created_tmp_files com_delete
         sort_merge_passes sort_range sort_rows sort_scan
         innodb_rows_read innodb_rows_deleted innodb_rows_updated innodb_rows_inserted
         innodb_pages_read innodb_pages_created innodb_pages_written
+        innodb_data_reads innodb_data_writes innodb_data_fsyncs innodb_log_writes
        /) {
     next if $_ =~ m!^innodb_! && !$meta{innodb};
     next if $_ =~ m!^replication_! && !$meta{replication};
