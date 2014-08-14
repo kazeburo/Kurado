@@ -327,6 +327,36 @@ router [qw/GET POST/] => '/api/host-status' => [qw/fill_config/] => sub {
     $c->render_json(\%result);
 };
 
+get '/api/servers' => [qw/fill_config/] => sub {
+    my ($self, $c)  = @_;
+
+    my @services;
+    if ( my $service = $c->req->param('service') ) {
+        $c->halt(404) unless exists $self->config_loader->services->{$service};
+        my $sections = $self->config_loader->services->{$service};
+        push @services, {
+            service => $service,
+            sections => $sections
+        };
+    }
+    else {
+        @services = @{$self->config_loader->sorted_services};
+    }
+
+    my $servers='';
+    for my $service ( @services ) {
+        for my $section ( @{$service->{sections}} ) {
+            for my $host ( @{$section->{hosts}} ) {
+                $servers .= sprintf("%s %s %s\n",$host->{address},$host->{hostname},$host->{comments});
+            }
+        }
+    }
+    $c->res->content_type('text/plain');
+    $c->res->body($servers);
+    $c->res;
+};
+
+
 1;
 
 
