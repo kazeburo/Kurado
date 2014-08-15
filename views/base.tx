@@ -154,6 +154,8 @@ $(function(){
         zc.attr("title","Copied!").tooltip("fixTitle").tooltip("show").attr("title","Copy to clipboard").tooltip("fixTitle");
       },110);
     });
+
+    $('[data-toggle="tooltip"]').tooltip();
 });
 </script>
 </body>

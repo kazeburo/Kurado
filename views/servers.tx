@@ -30,8 +30,10 @@
           <div class="btn-group btn-group-sm">
             <ul class="nav nav-pills">
               <li class="<: $c.req.param('plugin_identifier') ? "" : "active" :>"><a href="<: $c.req.uri_for('/servers',$merge_nav($term,"")) :>"><span class="glyphicon glyphicon-tasks"></span> 全て表示</a></li>
-              : for $uniq_plugins -> $plugin_identifier {
-              <li class="<: $c.req.param('plugin_identifier') == $plugin_identifier ? "active" : "" :>"><a href="<: $c.req.uri_for('/servers',$merge_nav($term,$plugin_identifier)) :>"><span class="glyphicon glyphicon-tasks"></span> <: $plugin_identifier_short :></a></li>
+              : for $uniq_plugins -> $plugin {
+              <li class="<: $c.req.param('plugin_identifier') == $plugin.plugin_identifier ? "active" : "" :>"><a href="<: $c.req.uri_for('/servers',$merge_nav($term,$plugin.plugin_identifier)) :>"<: if $plugin.plugin_identifier_short != $plugin.plugin_identifier { :> data-toggle="tooltip" data-placement="bottom" title="<: $plugin.plugin_identifier :>"<: } :>><span class="glyphicon glyphicon-tasks"></span> <: $plugin.plugin_identifier_short :></a></li>
+
+
               : }
             </ul>
           </div> <!-- btn-group -->

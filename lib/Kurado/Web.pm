@@ -181,7 +181,7 @@ get '/servers' => [qw/fill_config/] => sub {
         }
         for my $plugin (@{$host->plugins}) {
             next if $uniq_plugins{$plugin->plugin_identifier};
-            push @uniq_plugins, $plugin->plugin_identifier;
+            push @uniq_plugins, $plugin;
             $uniq_plugins{$plugin->plugin_identifier} = 1;
         }
         push @hosts, Kurado::Host->new(
