@@ -415,3 +415,7 @@ h4.metrics-label {
 table.servers-table.metrics .graphs {
   text-align: center;
 }
+
+.tooltip-inner {
+  word-wrap: break-word;
+}
