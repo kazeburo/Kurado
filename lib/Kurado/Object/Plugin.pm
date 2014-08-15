@@ -41,7 +41,7 @@ sub plugin_identifier {
 
 sub plugin_identifier_short {
     my $self = shift;    
-    my $str = $self->plugin_identifier
+    my $str = $self->plugin_identifier;
     if ( length $str <= 25 ) {
         return $str;
     }
