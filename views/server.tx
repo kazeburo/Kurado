@@ -37,7 +37,7 @@
             <ul class="nav nav-pills">
               <li class="<: $c.req.param('plugin_identifier') ? "" : "active" :>"><a href="<: $c.req.uri_for('/server',$merge_nav($term,"")) :>"><span class="glyphicon glyphicon-tasks"></span> 全て表示</a></li>
             : for $c.stash.host.metrics_list -> $plugin {
-              <li class="<: $c.req.param('plugin_identifier') == $plugin.plugin.plugin_identifier ? "active" : "" :> <: $plugin.warn.size() ? "has-warn" : "" :>"><a href="<: $c.req.uri_for('/server',$merge_nav($term,$plugin.plugin.plugin_identifier)) :>"><span class="glyphicon glyphicon-tasks"></span> <: $plugin.plugin.plugin_identifier :></a></li>
+              <li class="<: $c.req.param('plugin_identifier') == $plugin.plugin.plugin_identifier ? "active" : "" :> <: $plugin.warn.size() ? "has-warn" : "" :>"><a href="<: $c.req.uri_for('/server',$merge_nav($term,$plugin.plugin.plugin_identifier)) :>"><span class="glyphicon glyphicon-tasks"></span> <: $plugin.plugin.plugin_identifier_short :></a></li>
         : }
             </ul>
           </div>

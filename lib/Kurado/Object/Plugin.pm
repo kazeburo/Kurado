@@ -39,6 +39,16 @@ sub plugin_identifier {
     $str;
 }
 
+sub plugin_identifier_short {
+    my $self = shift;    
+    my $str = $self->plugin_identifier
+    if ( length $str <= 25 ) {
+        return $str;
+    }
+    substr($str,0,23) . '..';
+}
+
+
 sub plugin_identifier_escaped {
     my $self = shift;
     uri_escape($self->plugin_identifier, "^A-Za-z0-9\-_"); #escape dot
