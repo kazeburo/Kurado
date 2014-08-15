@@ -42,7 +42,7 @@ sub metrics_list {
         $list .= "traffic-$interface\n";
     }
     # cpu, load-avg,  memory-usage, tcp-established
-    $list .= "# CPU Memory\t". join("\t",'# ',@info)."\n";
+    $list .= "# CPU Memory\t". join("\t",@info)."\n";
     $list .= "$_\n"for qw/cpu loadavg-1 memory-usage tcp-established/;
 
     # disk usage
