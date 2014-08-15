@@ -392,6 +392,13 @@ h4.metrics-label {
   word-wrap: break-word;
 }
 
+.metrics-meta > span > a,
+.metrics-meta > span > a:hover {
+  color: #888888;
+  text-decoration: underline;
+}
+
+
 .label-meta {
   background-color: #fc6;
   text-transform:uppercase;
