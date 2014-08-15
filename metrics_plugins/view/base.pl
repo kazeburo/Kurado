@@ -29,12 +29,11 @@ my $plugin = Kurado::Plugin->new(@ARGV);
 sub metrics_list {
     my $plugin = shift;
     my $meta = $plugin->metrics_meta;
-    my $list='';;
+    my $list='';
     # info
     my @info;
     push @info, 'uptime', $plugin->uptime2str($meta->{uptime}) if exists $meta->{uptime};
     push @info, 'version', $meta->{version} if exists $meta->{version};
-    $list .= join("\t",'# ',@info)."\n";
     # traffic
     my @traffic_interface = split /,/, $meta->{'traffic-interfaces'} || '';
     $list .= "# Traffic\twarn\tno interfaces\n" if ! @traffic_interface;
@@ -43,7 +42,7 @@ sub metrics_list {
         $list .= "traffic-$interface\n";
     }
     # cpu, load-avg,  memory-usage, tcp-established
-    $list .= "# CPU Memory\n";
+    $list .= "# CPU Memory\t". join("\t",'# ',@info)."\n";
     $list .= "$_\n"for qw/cpu loadavg-1 memory-usage tcp-established/;
 
     # disk usage
