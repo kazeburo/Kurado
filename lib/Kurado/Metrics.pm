@@ -25,6 +25,8 @@ sub process_message {
     my %uniq_address_plugin;
     foreach my $line ( split /\n/, $message ) {
         chomp $line;
+        # comment
+        next if ($line =~ m!^\s*#! || $line =~ m!^\s*//!); 
         my $msg = eval {
             $self->parse_metrics_line($line);
         };

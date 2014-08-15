@@ -12,6 +12,8 @@ use Kurado::Plugin::Compile;
 use Kurado::Storage;
 use Kurado::RRD;
 
+use Text::Xslate qw/mark_raw/;
+
 has 'config_loader' => (
     is => 'ro',
     isa => 'Kurado::ConfigLoader',
@@ -81,7 +83,8 @@ sub metrics_list {
             plugin => $plugin,
             address => $self->address,            
         );
-        if ( (!$last_received || $last_received < time - $LAST_RECEIVED_EXPIRES ) && !$self->config_loader->has_fetch_plugin($plugin->plugin) ) {
+        if ( (!$last_received || $last_received < time - $LAST_RECEIVED_EXPIRES ) 
+                 && !$self->config_loader->has_fetch_plugin($plugin->plugin) ) {
             $warn->{'__system__'} = 'Metrics are not updated in the last 5 minutes. This host or kurado_agent has been down';
             $warn->{'__system__'} .= '.last updated: ' . localtime($last_received) if $last_received;
         }
@@ -128,6 +131,8 @@ sub parse_metrics_list {
     my @metrics;
     for my $line ( split /\n/, $list ) {
         next unless $line;
+        # comment  // だけ。# はタイトルで使っている
+        next if $line =~ m!^\s*//!;
         if ( $line =~ m/^#/ ) {
             $line =~ s!^# *!!g;
             $line =~ s! *$!!g;
@@ -137,6 +142,10 @@ sub parse_metrics_list {
             while ( @args ) {
                 my $key = shift(@args);
                 my $val = shift(@args);
+                if ( $val =~ m!>\|\|! ) { #keyの頭が >|| から始まっている場合HTML escapeせずにそのまま表示
+                    $val =~ s!^>\|\|!!;
+                    $val = mark_raw($val);
+                }
                 push @meta, {key=>$key,value=>$val};
             }
             my %meta = @args;
@@ -244,6 +253,8 @@ sub parse_fetched_metrics {
     my $body = '';
     for my $ret (split /\n/, $result) {
         chomp($ret);
+        # comment
+        next if ($ret =~ m!^\s*#! || $ret =~ m!^\s*//!); 
         my @ret = split /\t/,$ret;
         if ( $ret[0] !~ m!^(?:metrics|meta)\.! ) {
             $ret[0] = "metrics.$ret[0]";

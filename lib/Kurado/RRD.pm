@@ -243,6 +243,7 @@ sub parse_graph_def {
     )->with('Method');
     my ($self, $args) = $rule->validate(@_);
 
+# Graph Vertical-title
 # DEF:ind=<%RRD_FOR traffic-eth1-rxbytes.derive %>:n:AVERAGE
 # DEF:outd=<%RRD_FOR traffic-eth1-txbytes.derive %>:n:AVERAGE
 # CDEF:in=ind,0,1250000000,LIMIT,8,*
@@ -259,8 +260,11 @@ sub parse_graph_def {
     $def =~ s!<%RRD(?:_FOR)?\s+(.+?\.(?:gauge|counter|derive|absolute))\s+%>!&rrd_path_for($self,$args->{plugin},$args->{host},$1)!ge;
     $def =~ s!<%RRD_EXTEND\s+(.+?) +(.+?) +(.+?\.(?:gauge|counter|derive|absolute))\s+%>!&rrd_path_extend($self,$1,$2,$3)!ge;
     $def =~ s!^DEF:([^:]+):[^:]+:(MAX|AVERAGE|MIN)!DEF:$1:n:$2!gms;
-    my @def = grep {$_} grep { $_ !~ m!^\s*#! } split /\n/,$def;
-    my $title = shift @def;
+    my @def = grep {$_} grep { $_ !~ m!^\s*(?:#|//)! } split /\n/,$def; # comment
+    my $title = $args->{plugin}->plugin;
+    if ( $def[0] !~ m!^C?DEF:! ) {
+        $title = shift @def;
+    }
     $title,\@def;
 }
 
