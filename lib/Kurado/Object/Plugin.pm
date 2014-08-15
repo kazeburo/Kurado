@@ -42,10 +42,10 @@ sub plugin_identifier {
 sub plugin_identifier_short {
     my $self = shift;    
     my $str = $self->plugin_identifier;
-    if ( length $str <= 25 ) {
+    if ( length $str <= 27 ) {
         return $str;
     }
-    substr($str,0,23) . '..';
+    substr($str,0,25) . '..';
 }
 
 
