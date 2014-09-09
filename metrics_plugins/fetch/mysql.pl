@@ -60,7 +60,8 @@ if ( $rep_status ) {
         $warn{replication} = $rep_status->{Last_Error};
     }
 
-    $status{replication_second_behind_master} = exists $rep_status->{Seconds_Behind_Master} 
+    $status{replication_second_behind_master} = 
+        ( exists $rep_status->{Seconds_Behind_Master} && defined $rep_status->{Seconds_Behind_Master} )
         ? $rep_status->{Seconds_Behind_Master} : 'U';
     $status{replication_read_master_log_pos} = $rep_status->{Read_Master_Log_Pos};
     $status{replication_exec_master_log_pos} = exists $rep_status->{Exec_Master_Log_Pos} 
