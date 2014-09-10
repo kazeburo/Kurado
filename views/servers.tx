@@ -16,11 +16,13 @@
       </div>
       <div class="col-sm-4" style="text-align: right;">
         <a href="/" class="subnav-brand">Kurado - Server Performance Metrics</a>
+        &nbsp;
+	<button id="minimize-button" class="btn btn-default btn-xs" data-toggle="tooltip" data-placement="left" title="minimize/expand header"><span class="glyphicon glyphicon-minus-sign"></span></button>
       </div>
     </div>
   </div> <!-- container -->
 
-  <div class="container-fluid plugin-nav">
+  <div class="container-fluid plugin-nav minimize-header">
     <div class="row">
       <div class="col-sm-12">
         <div class="btn-toolbar" role="toolbar">
@@ -42,7 +44,7 @@
     </div> <!-- row -->
   </div> <!-- container -->
 
-  <div class="container-fluid graph-nav">
+  <div class="container-fluid graph-nav minimize-header">
   <div class="row">
     <div class="col-sm-6">
     <div class="btn-toolbar" role="toolbar">

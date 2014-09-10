@@ -61,7 +61,7 @@ body {
   float: left;
   width: 20px;
   height: 20px;
-  margin-top: 0px;
+  margin-top: -1px;
   margin-right: 2px;
   content: " ";
 }
@@ -136,6 +136,7 @@ body {
 
 .plugin-nav {
   border-top: 1px solid #272b30;
+  overflow-y: hidden;
 }
 .plugin-nav .nav-pills>li>a {
    border-radius: 2px;
@@ -163,19 +164,19 @@ body {
   text-decoration: none;
 }
 
-
 #subnav .graph-nav.container-fluid {
   background-color: #272b30;
+  overflow-y: hidden;
 }
 
 .graph-nav .btn-default.active {
   background-color: #f89406;
 }
+
 .graph-nav .btn-default.active:hover {
   background-color: #f89406;
   background-image: none;
 }
-
 
 /* Sidebar navigation */
 .nav-sidebar {

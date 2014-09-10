@@ -24,12 +24,38 @@
 <script type="text/javascript" src="<: $c.req.uri_for('/js/ZeroClipboard.min.js') :>"></script>
 <script>
 $(function(){
+  $.cookie.json = true;
   $('.form-datetime').datetimepicker({
     format: 'yyyy-mm-dd hh:ii:00',
     minuteStep: 15,
     autoclose: true,
     todayBtn: true,
     todayHighlight: true
+  });
+  $('#minimize-button').map(function(){
+    var btn = $(this);
+    var minimize = $.cookie('minimize-header');
+    if ( minimize == true ) {
+      $('.minimize-header').css('height','8px');
+      btn.find('span').removeClass("glyphicon-minus-sign").addClass("glyphicon-plus-sign");
+    }
+    else {
+      $('.minimize-header').css('height','');
+      btn.find('span').removeClass("glyphicon-plus-sign").addClass("glyphicon-minus-sign");
+    }
+    btn.on('click',function(){
+      if ( btn.find('span').hasClass("glyphicon-plus-sign") ) {
+        $('.minimize-header').css('height','');
+        btn.find('span').removeClass("glyphicon-plus-sign").addClass("glyphicon-minus-sign");
+        $.cookie('minimize-header', false, { expires: 365, path: '/' });
+      }
+      else {
+        $('.minimize-header').css('height','8px');
+        btn.find('span').removeClass("glyphicon-minus-sign").addClass("glyphicon-plus-sign");
+        $.cookie('minimize-header', true, { expires: 365, path: '/' });
+      }
+      $('#subnav').parents('.subnav-wrapper').css('height',$('#subnav').outerHeight(true));
+    });
   });
   $('#subnav').map(function(){
     var subnav = $(this);
@@ -118,7 +144,6 @@ $(function(){
       haserror_api(0);
     }
 
-    $.cookie.json = true;
     var open_new = $.cookie('open-new');
     if ( open_new == true ) {
         $("#open-new").attr('checked',true);
