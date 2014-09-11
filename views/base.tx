@@ -32,7 +32,7 @@ $(function(){
     todayBtn: true,
     todayHighlight: true
   });
-  $('#minimize-button').map(function(){
+  $('#minimize-button').each(function(){
     var btn = $(this);
     var minimize = $.cookie('minimize-header');
     if ( minimize == true ) {
@@ -57,41 +57,44 @@ $(function(){
       $('#subnav').parents('.subnav-wrapper').css('height',$('#subnav').outerHeight(true));
     });
   });
-  $('#subnav').map(function(){
+  $('#subnav').each(function(){
     var subnav = $(this);
     subnav.parents('.subnav-wrapper').css('height',subnav.outerHeight(true));
   });
+
+  var server_address_checkboxes = $("input[name=server-address]")
   var serverChecked = function () {
-    $("input[name=server-address]").each(function(){
+    var checked = 0;
+    server_address_checkboxes.each(function(){
       if( $(this).is(":checked") ) {
         $(this).parents('td').addClass("host-checked");
+        checked++;
       }
       else {
         $(this).parents('td').removeClass("host-checked")
       }
-      if ( $("input[name=server-address]:checked").length >= 2 ) {
-        $('#uncheck-all').removeClass('disabled');
-        $('#uncheck-all').find('span').addClass('glyphicon-check');
-        $('#uncheck-all').find('span').removeClass('glyphicon-unchecked');
-        $('#open-checked').removeClass('disabled');
-      }
-      else {
-        $('#uncheck-all').addClass('disabled')
-        $('#uncheck-all').find('span').addClass('glyphicon-unchecked');
-        $('#uncheck-all').find('span').removeClass('glyphicon-check');
-        $('#open-checked').addClass('disabled')
-      }
     });
+    if ( checked >= 2 ) {
+      $('#uncheck-all').removeClass('disabled');
+      $('#uncheck-all').find('span').removeClass('glyphicon-unchecked').addClass('glyphicon-check');
+      $('#open-checked').removeClass('disabled');
+    }
+    else {
+      $('#uncheck-all').addClass('disabled')
+      $('#uncheck-all').find('span').removeClass('glyphicon-check').addClass('glyphicon-unchecked');
+      $('#open-checked').addClass('disabled')
+    }
   };
-  $("input[name=server-address]").shiftcheckbox();
-  $("input[name=server-address]").on('click',serverChecked);
-  serverChecked.call();
+  server_address_checkboxes.shiftcheckbox();
+  server_address_checkboxes.on('click',serverChecked);
+  serverChecked();
   $('#uncheck-all').on('click',function(e){
-    $("input[name=server-address]").attr('checked',false);
-    serverChecked.call();
+    server_address_checkboxes.attr('checked',false);
+    serverChecked();
     e.preventDefault();
   });
-  $("#open-checked").click(function(){
+
+  $("#open-checked").on('click',function(){
     var form = $('<form/>');
     $("input[name=server-address]:checked").each( function () {
       var input = $('<input/>');
@@ -105,82 +108,80 @@ $(function(){
   var hostslen = $("a.host-address").length;
   var haserror_api = function (startnum) {
     var form = $('<form/>');
-    var endnum = (startnum+100 < hostslen) ? startnum+100 : hostslen;
-      $("a.host-address").slice(startnum, endnum).each(function(){
+    var endnum = (startnum+50 < hostslen) ? startnum+50 : hostslen;
+    var sliced = $("a.host-address").slice(startnum, endnum);
+    sliced.each(function(){
       var input = $('<input/>');
-        input.attr('name','address');
-        input.attr('value',$(this).text());
-        form.append(input);
-      });
-      $.post(
-        '/api/host-status',
-        form.serialize(),
-        function (data) {
-          $("a.host-address").slice(startnum, endnum).each(function(){
-            var ip = $(this).text();
-            var tag = $(this).parent().children("span.host-status");
-            tag.removeClass('glyphicon-flash');
-            if ( data[ip] == 2 ) {
-              tag.addClass('glyphicon-warning-sign');
-              tag.addClass("host-status-crit");
-              $(this).parent().addClass('danger');
-            }
-            else if ( data[ip] == 1 ) {
-              tag.addClass('glyphicon-fire');
-              tag.addClass("host-status-warn");
-              $(this).parent().addClass('warning');
-            }
-            else {
-              tag.addClass('glyphicon-ok');
-              tag.addClass("host-status-ok");
-            }
-          });
-          if ( endnum < hostslen ) haserror_api(startnum+100);
-        },
-        "json"
-      );
-    };
-    if ( hostslen > 0 ) {
-      haserror_api(0);
-    }
+      input.attr('name','address');
+      input.attr('value',$(this).text());
+      form.append(input);
+    });
+    $.post(
+      '/api/host-status',
+      form.serialize(),
+      function (data) {
+        sliced.each(function(){
+          var ip = $(this).text();
+          var tag = $(this).parent().children("span.host-status");
+          tag.removeClass('glyphicon-flash');
+          if ( data[ip] == 2 ) {
+            tag.addClass('glyphicon-warning-sign host-status-crit');
+            $(this).parent().addClass('danger');
+          }
+          else if ( data[ip] == 1 ) {
+            tag.addClass('glyphicon-fire host-status-warn');
+            $(this).parent().addClass('warning');
+          }
+          else {
+            tag.addClass('glyphicon-ok host-status-ok');
+          }
+        });
+        if ( endnum < hostslen ) setTimeout(function(){ haserror_api(startnum+50) }, 100);
+      },
+      "json"
+    );
+  };
+  if ( hostslen > 0 ) {
+    haserror_api(0);
+  }
 
-    var open_new = $.cookie('open-new');
-    if ( open_new == true ) {
-        $("#open-new").attr('checked',true);
+  var open_new = $.cookie('open-new');
+  if ( open_new == true ) {
+    $("#open-new").attr('checked',true);
+  }
+  $("#open-new").bootstrapSwitch({
+    size: 'mini'
+  });
+  var set_target = function (state) {
+    if ( state == true ) {
+      $("a.host-address").attr("target","_blank");
+      $("#open-checked").attr("target","_blank");
     }
-    $("#open-new").bootstrapSwitch({
-        size: 'mini'
-    });
-    var set_target = function (state) {
-      if ( state == true ) {
-        $("a.host-address").attr("target","_blank");
-        $("#open-checked").attr("target","_blank");
-      }
-      else {
-        $("a.host-address").attr("target","_self");
-        $("#open-checked").attr("target","_self");
-      }
+    else {
+      $("a.host-address").attr("target","_self");
+      $("#open-checked").attr("target","_self");
     }
-    set_target(open_new);
-    $('#open-new').on('switchChange.bootstrapSwitch', function(event, state) {
-      $.cookie('open-new', state, { expires: 365, path: '/' });
-      set_target(state);
-      event.preventDefault();
-    });
+  }
+  set_target(open_new);
+  $('#open-new').on('switchChange.bootstrapSwitch', function(event, state) {
+    $.cookie('open-new', state, { expires: 365, path: '/' });
+    set_target(state);
+    event.preventDefault();
+  });
 
-    ZeroClipboard.config({swfPath:"/img/ZeroClipboard.swf"});
-    var client = new ZeroClipboard($(".copy-button"));
-    var zc=$("#global-zeroclipboard-html-bridge");
-    client.on("ready", function(e) {
-      zc.data("placement","bottom").attr("title","Copy to clipboard").tooltip({delay:10});
-    });
-    client.on("aftercopy", function(e){
-      setTimeout(function(){
-        zc.attr("title","Copied!").tooltip("fixTitle").tooltip("show").attr("title","Copy to clipboard").tooltip("fixTitle");
-      },110);
-    });
+  ZeroClipboard.config({swfPath:"/img/ZeroClipboard.swf"});
+  var client = new ZeroClipboard($(".copy-button"));
+  var zc=$("#global-zeroclipboard-html-bridge");
+  client.on("ready", function(e) {
+    zc.data("placement","bottom").attr("title","Copy to clipboard").tooltip({delay:10});
+  });
+  client.on("aftercopy", function(e){
+    setTimeout(function(){
+      zc.attr("title","Copied!").tooltip("fixTitle").tooltip("show").attr("title","Copy to clipboard").tooltip("fixTitle");
+    },110);
+  });
 
-    $('[data-toggle="tooltip"]').tooltip();
+  $('[data-toggle="tooltip"]').tooltip();
 });
 </script>
 </body>
