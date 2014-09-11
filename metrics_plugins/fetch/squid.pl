@@ -27,7 +27,7 @@ my %meta;
     my $raw_stats = $client->read_until_close(1);
     die "could not retrieve couter status from $host:$port" unless $raw_stats;
     foreach my $line ( split /\r?\n/, $raw_stats ) {
-        if ( $line =~ /^client_http\.(requests|hits|errors)\s*=\s*(\d+)$/ ) {
+        if ( $line =~ /^client_http\.(requests|hits|errors)\s*=\s*(\-?\d+)$/ ) {
             $stats{'client-http.'.$1} = $2;
         }
     }
