@@ -18,18 +18,13 @@
 3. 1分毎に起動して2にキューを投げるwoker
 4. web画面
 
-### push
-
-
-### pull
-
 ## Redis
 
 Redisをキュー/付属情報DBとして使う
 
 ### Redisのインストール
 
-CenOS6 だとEPEL/Remiを有効にして `yum install redis` ？
+CenOS6 だとEPEL/Remiを有効にして `yum install redis` 
 
 ```
 $ sudo yum install http://ftp.jaist.ac.jp/pub/Linux/Fedora/epel/6/i386/epel-release-6-8.noarch.rpm
@@ -49,6 +44,13 @@ $ chmod +x kurado_agent
 $ ./kurado_agent --help
 ```
 
+rpmもある
+
+```
+$ sudo yum install https://s3-ap-northeast-1.amazonaws.com/kurado-agent/RPMS/noarch/kurado_agent-latest.noarch.rpm
+$ sudo service kurado_agent start
+```
+
 metricsを表示して終了する
 
 ```
@@ -64,34 +66,33 @@ $ kurado_agent --interval 1 --self-ip ip.address.of.myself --mq 127.0.0.1:1887 -
 
 ### オプション
 
-- --self-ip
-
-    サーバのIPアドレス
-
 - --conf-d
 
     拡張metricsの設定があるディレクトリ。設定ファイルは *.toml となる
- 
- - --dump
-
-    現在のmetricsを表示して終了
-
-- --mq
-
-    Redisの IPアドレス:ポート
- 
-- --pidfile
-
-    pidファイルのパス
 
 - --interval
 
     metricsを送信する間隔(分)。デフォルトは1(分)
 
+- --mq
+
+    Redisの IPアドレス:ポート
+
+- --self-ip
+
+    サーバのIPアドレス(なければredisへの接続元のIPアドレスを使う)
+
+- --pidfile
+
+    pidファイルのパス
+
 - --max-delay
 
     metricsを遅延する最大秒数(秒)。"0"秒に負荷が集中するのを低減する。デフォルトは0(なし)
 
+ - --dump
+
+    現在のmetricsを表示して終了
 
 ### 標準のmetrics
 
@@ -109,7 +110,6 @@ $ kurado_agent --interval 1 --self-ip ip.address.of.myself --mq 127.0.0.1:1887 -
 tab切りで、`ip[TAB]key[TAB]value[TAB]timestamp` 形式。
 
 サンプルはIPを省略している
-
 
 ```
 base.metrics.cpu-guest-nice.derive	0	1404873350
@@ -190,7 +190,7 @@ pluginから以下の形式で出力する
 
 keyの最初がmetricsやmetaではない場合、"metrics"が追加される。<br />
 keyの最後が .{gauge,..} 等でなかった場合は、gaugeが使われる。<br />
-metaはmetricsの付属情報としてDBに保存される。サーバ情報などに使われる。履歴は残らない
+metaはmetricsの付属情報としてDBに保存される。サーバ情報などに使われる。
 
 上のprocess pluginの出力は
 
@@ -200,9 +200,29 @@ process.metrics.fork.derive     39234   1404871619
 
 となる
 
-# サーバリスト設定
+# サーバ側セットアップ
 
-これから
+このrepositoryをcloneして、`cpanm --installdeps .` して
+
+```
+$ perl bin/kurado_worker -c config.yml
+```
+
+
+# サーバ設定
+
+sample_kurado.ymlを参照
+
+cloudforecastとだいたい同じ
+
+
+# 設定のテスト
+
+```
+$ perl bin/kurado_config -c config.yml
+```
+
+で設定のテストができる
 
 #Kurado plugin protocol
 
@@ -224,6 +244,12 @@ metricsを表示する系
 - plugin arguments
 - metrics meta (サーバ情報)
 
+これらはコマンドの引数として渡される
+
+## pluginのディレクトリ
+
+`metrics_plugins/view` ディレクトリと `metrics_plugin/fetch`の2つにわけて格納されている。設定ファイルでディレクトリを追加できる
+
 ## Protocol
 
 - $Kurado::Plugin::BRIDGE{'kurodo.metrics_config'}
@@ -237,6 +263,11 @@ metricsを表示する系
   - --plugin-arguments => roll_configのmetricsの:以降のやつ。あれば複数個。なければない
   - --graph => graph, metrics-graph apiの時だけ
 
+実行例
+
+```
+./view/nginx.pl --address 127.0.0.1 --hostname example.com --plugin-argument 80 -plugin-argument /nginx_status
+```
 
 ## API
 
@@ -249,13 +280,19 @@ metricsを取得して、kurodo_agentのpluginが返すとの同じフォーマ�
 metricsのリストとグラフ付随情報
 
 ```
-あとで
+#Nginx (80)[TAB]server[TAB]nginx[TAB]key[TAB]value
+processes
+reqs
 ```
+
+「#」の行がグラフグループのタイトル。1つのプラグインで複数のグループをもてる。タイトルのところには、TAB区切りで情報が追加できます。<br />
+情報のvalue部分の最初を「>||」にすると、HTMLが書けます
+「#」が付かない行がグラフのキー
 
 ### metrics-graph
 
-RRDtoolのグラフ定義を返す
-1行目はグラフの縦軸のラベル
+RRDtoolのグラフ定義を返す<br />
+1行目はグラフの縦軸のラベル(必須)
 
 ```
 TCP Established
@@ -272,9 +309,27 @@ GPRINT:n:MIN:Min\:%6.0lf\l
 - `<%RRD_FOR ${metrics_key}.{gauge,counter,derive,absolute} %>` plugin,ipは自動補完。rrdファイルへのpath
 - `<%RRD_EX ${plugin} ${ip} ${metrics_key}.{gauge,counter,derive,absolute} %>` 他のplugin,ipのrrdファイルへのpath
 
+
+## pluginサンプル
+
+Kurado::Pluginモジュールをつかうとテンプレートや引数の処理を自動でやってくれて、便利です　
+
+### fetcherサンプル
+
+mysqlの任意のテーブルをcountするやつ
+
+```
+#!/usr/bin/perluse strict;use warnings;use FindBin;use lib "$FindBin::Bin/../../lib";use Kurado::Plugin;use DBI;our $VERSION = '0.01';my $plugin = Kurado::Plugin->new(@ARGV);my $host = $plugin->address;my ($port,$db, $table) = @{$plugin->plugin_arguments};$port ||= 3306;die "db or table are not defined, simplecountsql:port:db:table" if  !$db || !$table;my $user = $plugin->metrics_config->{MySQL}->{user} || 'root';my $password = $plugin->metrics_config->{MySQL}->{password} || '';my $dsn = "DBI:mysql:$db;hostname=$host;port=$port";my $dbh = eval {    DBI->connect(        $dsn,        $user,        $password,        {            RaiseError => 1,        }    );};die "connection failed to " . $dsn .": $@" if $@;my $row = $dbh->selectrow_arrayref('SELECT COUNT(*) FROM '.$table);die "failed to fetch count of jobs" unless $row;my $time = time;print "metrics.count.gauge\t$row->[0]\t$time\n";```
+
+### viewer サンプル
+
+```
+#!/usr/bin/perluse strict;use warnings;use FindBin;use lib "$FindBin::Bin/../../lib";use Kurado::Plugin;our $VERSION = '0.01';my $plugin = Kurado::Plugin->new(@ARGV);sub metrics_list {    my $plugin = shift;    my ($port,$db,$table) = @{$plugin->plugin_arguments};    $port ||= 3306;    die "db or table are not defined, simplecountsql:port:db:table" if !$db || !$table;    my $list = sprintf '#Count by SQL (table=%s,db=%s,port=%s)'."\n", $table, $db, $port;    $list .= "count\n";    print $list;}sub metrics_graph {    my $plugin = shift;    my $graph = $plugin->graph;    my $def = '';    $def = $plugin->render($graph);    print "$def\n";}if ($plugin->graph ) {    metrics_graph($plugin);}else {    metrics_list($plugin);}__DATA__@@ countCOUNT(*)DEF:my1=<%RRD count.gauge %>:queue:AVERAGELINE:my1#00C000:CountGPRINT:my1:LAST:Cur\: %6.0lfGPRINT:my1:AVERAGE:Ave\: %6.0lfGPRINT:my1:MAX:Max\: %6.0lf\l```
+
+
 ## rrdファイルのディレクトリ構成
 
-~/data/$plugin/ip/${metrics_key}.{gauge,counter,derive,absolute}.rrd
+~/data/${ip}/$plugin/${metrics_key}.{gauge,counter,derive,absolute}.rrd
 
 ## rrdファイルの定義
 
@@ -303,7 +358,7 @@ GPRINT:n:MIN:Min\:%6.0lf\l
 
 だいたいこれで 190KB ぐらい
 
-## plugin apiメモ
+## 設計メモ
 
 - pluginは起動時に読み込まれる
 - __DATA__は使いたい
