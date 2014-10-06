@@ -27,7 +27,7 @@ sub metrics_list {
     }
     my ($port) = @{$plugin->plugin_arguments};
     $port ||= 8773;
-    $list .= join("\t",'#Memcached ('.$port.')',@info)."\n";
+    $list .= join("\t",'#Jolokia ('.$port.')',@info)."\n";
     $list .= "$_\n" for qw/class_c thread_c gc_c gc_t m_heap_s m_nonheap_s 
                            mp_eden_s mp_surv_s mp_old_s mp_perm_s/;
     print $list;
