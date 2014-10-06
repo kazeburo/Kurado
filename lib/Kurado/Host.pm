@@ -223,7 +223,7 @@ sub fetch_metrics {
             type => 'fetch',
         );
         die "$stderr\n" unless $success;
-        warnf sprintf('[%s][%s] %s',$self->host, $args->{plugin}->plugin, $stderr) if $stderr;
+        warnf sprintf('[%s][%s] %s',$self->host->address, $args->{plugin}->plugin, $stderr) if $stderr;
         $body .= $self->parse_fetched_metrics(
             plugin => $args->{plugin},
             result => $stdout
