@@ -28,8 +28,11 @@ sub metrics_list {
     my ($port) = @{$plugin->plugin_arguments};
     $port ||= 8773;
     $list .= join("\t",'#Jolokia ('.$port.')',@info)."\n";
-    $list .= "$_\n" for qw/class_c thread_c gc_c gc_t m_heap_s m_nonheap_s 
-                           mp_eden_s mp_surv_s mp_old_s mp_perm_s/;
+    $list .= "$_\n" for qw/class_c thread_c gc_c gc_t/;
+    $list .= '#Jolokia ('.$port.') Memory'."\n";
+    $list .= "$_\n" for qw/m_heap_s m_nonheap_s/;
+    $list .= '#Jolokia ('.$port.') Memory Pool'."\n";
+    $list .= "$_\n" for qw/mp_eden_s mp_surv_s mp_old_s mp_perm_s/;
     print $list;
 }
 
@@ -97,7 +100,7 @@ GPRINT:my2:AVERAGE:Ave\:%6.1lf
 GPRINT:my2:MAX:Max\:%6.1lf\l
 
 @@ m_heap_s
-Memory/Heap
+Heap
 DEF:my1=<%RRD heap_memory_usage.max.gauge %>:m_h_max_s:AVERAGE
 DEF:my2=<%RRD heap_memory_usage.committed.gauge %>:m_h_comt_s:AVERAGE
 DEF:my3=<%RRD heap_memory_usage.used.gauge %>:m_h_used_s:AVERAGE
@@ -114,7 +117,7 @@ GPRINT:my3:MAX:Max\:%6.1lf%S\l
 LINE1:my3#aa0000
 
 @@ m_nonheap_s
-Memory/Non-Heap
+Non-Heap
 DEF:my1=<%RRD non_heap_memory_usage.max.gauge %>:m_nh_max_s:AVERAGE
 DEF:my2=<%RRD non_heap_memory_usage.committed.gauge %>:m_nh_comt_s:AVERAGE
 DEF:my3=<%RRD non_heap_memory_usage.used.gauge %>:m_nh_used_s:AVERAGE
@@ -131,7 +134,7 @@ GPRINT:my3:MAX:Max\:%6.1lf%S\l
 LINE1:my3#8b4444
 
 @@ mp_eden_s
-MemoryPool/New:Eden
+New:Eden
 DEF:my1=<%RRD memory_pool.eden.max.gauge %>:mp_eden_max_s:AVERAGE
 DEF:my2=<%RRD memory_pool.eden.committed.gauge %>:mp_eden_comt_s:AVERAGE
 DEF:my3=<%RRD memory_pool.eden.used.gauge %>:mp_eden_used_s:AVERAGE
@@ -148,7 +151,7 @@ GPRINT:my3:MAX:Max\:%6.1lf%S\l
 LINE1:my3#aa0000
 
 @@ mp_surv_s
-MemoryPool/New:Survivor
+New:Survivor
 DEF:my1=<%RRD memory_pool.surv.max.gauge %>:mp_surv_max_s:AVERAGE
 DEF:my2=<%RRD memory_pool.surv.committed.gauge %>:mp_surv_comt_s:AVERAGE
 DEF:my3=<%RRD memory_pool.surv.used.gauge %>:mp_surv_used_s:AVERAGE
@@ -165,7 +168,7 @@ GPRINT:my3:MAX:Max\:%6.1lf%S\l
 LINE1:my3#aa0000
 
 @@ mp_old_s
-MemoryPool/Old
+Old
 DEF:my1=<%RRD memory_pool.old.max.gauge %>:mp_old_max_s:AVERAGE
 DEF:my2=<%RRD memory_pool.old.committed.gauge %>:mp_old_comt_s:AVERAGE
 DEF:my3=<%RRD memory_pool.old.used.gauge %>:mp_old_used_s:AVERAGE
@@ -182,7 +185,7 @@ GPRINT:my3:MAX:Max\:%6.1lf%S\l
 LINE1:my3#aa0000
 
 @@ mp_perm_s
-MemoryPool/Permanent
+Permanent
 DEF:my1=<%RRD memory_pool.perm.max.gauge %>:mp_perm_max_s:AVERAGE
 DEF:my2=<%RRD memory_pool.perm.committed.gauge %>:mp_perm_comt_s:AVERAGE
 DEF:my3=<%RRD memory_pool.perm.used.gauge %>:mp_perm_used_s:AVERAGE
