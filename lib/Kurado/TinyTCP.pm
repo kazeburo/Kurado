@@ -27,10 +27,16 @@ sub new {
 sub connect {
     my $self = shift;
     return $self->{sock} if $self->{sock};
-    my $socket = IO::Socket::INET->new(
-        PeerAddr => $self->{server},
-        Timeout => $self->{timeout},
-    ) or die "Socket connect failed: $!\n";
+    my $socket;
+    eval {
+        local $SIG{ALRM} = sub { die "Timed out\n"; };
+        alarm(4);
+        $socket = IO::Socket::INET->new(
+            PeerAddr => $self->{server},
+        ) or die "Socket connect failed: $!\n";
+    };
+    alarm(0);
+    die $@ if $@;
     $socket->blocking(0);
     $socket->setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
         or die "setsockopt(TCP_NODELAY) failed:$!\n";
