@@ -121,9 +121,9 @@ Non-Heap
 DEF:my1=<%RRD non_heap_memory_usage.max.gauge %>:m_nh_max_s:AVERAGE
 DEF:my2=<%RRD non_heap_memory_usage.committed.gauge %>:m_nh_comt_s:AVERAGE
 DEF:my3=<%RRD non_heap_memory_usage.used.gauge %>:m_nh_used_s:AVERAGE
-GPRINT:my1:LAST:Max\: %6.1lf%S\l
+GPRINT:my1:LAST:Max\: %6.1lf%s\l
 AREA:my2#73b675:Committed
-GPRINT:my2:LAST:Cur\:%6.1lf%S
+GPRINT:my2:LAST:Cur\:%6.1lf%s
 GPRINT:my2:AVERAGE:Ave\:%6.1lf%S
 GPRINT:my2:MAX:Max\:%6.1lf%S\l
 LINE1:my2#3d783f
