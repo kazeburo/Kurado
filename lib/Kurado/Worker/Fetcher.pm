@@ -39,6 +39,7 @@ sub run {
     });
     while ($pm->signal_received ne 'TERM') {
         $pm->start(sub{
+            srand();
             my $mq = Kurado::MQ->new(server => $self->config->redis);
             local $SIG{TERM} = sub {
                 $mq->{stop_loop} = 1;
