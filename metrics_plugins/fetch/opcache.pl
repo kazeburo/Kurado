@@ -43,7 +43,7 @@ if ( exists $config->{interned_strings_max} ) {
 
 for my $key (qw/max_file_size memory_max/) {
     if ( exists $config->{$key} ) {
-        my $size = $config->{$key};
+        my $size = $config->{$key} / (1024*1024);
         while($size =~ s/(.*\d)(\d\d\d)/$1,$2/){} ;
         $size .= "MB";
         print "meta.$key\t$size\t$time\n";
