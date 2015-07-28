@@ -34,11 +34,23 @@ die "request failed: " .$res->status_line."\n"
 my $data = JSON->new->utf8->decode($res->content);
 
 my $config = $data->{config} || {};
-for my $key (qw/max_accelerated_files max_file_size interned_strings_max memory_max/) {
+if ( exists $config->{max_accelerated_files} ) {
+    print "meta.$key\t$config->{max_accelerated_files}\t$time\n";
+}
+if ( exists $config->{interned_strings_max} ) {
+    print "meta.$key\t$config->{interned_strings_max}MB\t$time\n";
+}
+
+for my $key (qw/max_file_size memory_max/) {
     if ( exists $config->{$key} ) {
-        print "meta.$key\t$config->{$key}\t$time\n";
+        my $size = $config->{$key};
+        while($size =~ s/(.*\d)(\d\d\d)/$1,$2/){} ;
+        $size .= "MB";
+        print "meta.$key\t$size\t$time\n";
     }
 }
+
+
 
 my $stats = $data->{statictics} || {};
 for my $key (qw/opcache_hit_rate max_cached_keys num_cached_keys num_cached_scripts/) {
