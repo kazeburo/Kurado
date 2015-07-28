@@ -49,17 +49,17 @@ DEF:my1=<%RRD num_cached_keys.gauge %>:read:AVERAGE
 DEF:my2=<%RRD num_cached_scripts.gauge %>:write:AVERAGE
 DEF:my3=<%RRD max_cached_keys.gauge %>:wait:AVERAGE
 LINE2:my1#e55337:Cached keys
-GPRINT:my1:LAST:Cur\:%7.1lf
-GPRINT:my1:AVERAGE:Ave\:%7.1lf
-GPRINT:my1:MAX:Max\:%7.1lf\l
+GPRINT:my1:LAST:Cur\:%5.1lf%S
+GPRINT:my1:AVERAGE:Ave\:%5.1lf%S
+GPRINT:my1:MAX:Max\:%5.1lf%S\l
 LINE2:my2#d2f35e:Cached scripts
-GPRINT:my2:LAST:Cur\:%7.1lf
-GPRINT:my2:AVERAGE:Ave\:%7.1lf
-GPRINT:my2:MAX:Max\:%7.1lf\l
+GPRINT:my2:LAST:Cur\:%5.1lf%S
+GPRINT:my2:AVERAGE:Ave\:%5.1lf%S
+GPRINT:my2:MAX:Max\:%5.1lf%S\l
 LINE1:my3#020203:Max cached keys
-GPRINT:my3:LAST:Cur\:%7.1lf
-GPRINT:my3:AVERAGE:Ave\:%7.1lf
-GPRINT:my3:MAX:Max\:%7.1lf\l
+GPRINT:my3:LAST:Cur\:%5.1lf%S
+GPRINT:my3:AVERAGE:Ave\:%5.1lf%S
+GPRINT:my3:MAX:Max\:%5.1lf%S\l
 
 
 @@ hits
@@ -77,28 +77,28 @@ strings usage
 DEF:my1=<%RRD strings_used_memory.gauge %>:read:AVERAGE
 DEF:my2=<%RRD strings_free_memory.gauge %>:write:AVERAGE
 AREA:my1#e3aa59:Used
-GPRINT:my1:LAST:Cur\:%7.1lf
-GPRINT:my1:AVERAGE:Ave\:%7.1lf
-GPRINT:my1:MAX:Max\:%7.1lf\l
+GPRINT:my1:LAST:Cur\:%5.1lf%S
+GPRINT:my1:AVERAGE:Ave\:%5.1lf%S
+GPRINT:my1:MAX:Max\:%5.1lf\l%S
 STACK:my2#381707:Free
-GPRINT:my2:LAST:Cur\:%7.1lf
-GPRINT:my2:AVERAGE:Ave\:%7.1lf
-GPRINT:my2:MAX:Max\:%7.1lf\l
+GPRINT:my2:LAST:Cur\:%5.1lf%S
+GPRINT:my2:AVERAGE:Ave\:%5.1lf%S
+GPRINT:my2:MAX:Max\:%5.1lf%S\l
 
 @@ memory
 strings usage
 DEF:my1=<%RRD used_memory.gauge %>:read:AVERAGE
 DEF:my2=<%RRD free_memory.gauge %>:write:AVERAGE
 DEF:my3=<%RRD wasted_memory.gauge %>:write:AVERAGE
-AREA:my1#de4446:Used
-GPRINT:my1:LAST:Cur\:%7.1lf
-GPRINT:my1:AVERAGE:Ave\:%7.1lf
-GPRINT:my1:MAX:Max\:%7.1lf\l
-STACK:my2#dfe968:Free
-GPRINT:my2:LAST:Cur\:%7.1lf
-GPRINT:my2:AVERAGE:Ave\:%7.1lf
-GPRINT:my2:MAX:Max\:%7.1lf\l
+AREA:my1#de4446:Used  
+GPRINT:my1:LAST:Cur\:%5.1lf%S
+GPRINT:my1:AVERAGE:Ave\:%5.1lf%S
+GPRINT:my1:MAX:Max\:%5.1lf%S\l
+STACK:my2#dfe968:Free  
+GPRINT:my2:LAST:Cur\:%5.1lf%S
+GPRINT:my2:AVERAGE:Ave\:%5.1lf%S
+GPRINT:my2:MAX:Max\:%5.1lf%S\l
 STACK:my3#000d48:Wasted
-GPRINT:my3:LAST:Cur\:%7.1lf
-GPRINT:my3:AVERAGE:Ave\:%7.1lf
-GPRINT:my3:MAX:Max\:%7.1lf\l
+GPRINT:my3:LAST:Cur\:%5.1lf%S
+GPRINT:my3:AVERAGE:Ave\:%5.1lf%S
+GPRINT:my3:MAX:Max\:%5.1lf%S\l
