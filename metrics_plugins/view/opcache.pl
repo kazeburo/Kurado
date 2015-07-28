@@ -86,7 +86,7 @@ GPRINT:my2:AVERAGE:Ave\:%5.1lf%S
 GPRINT:my2:MAX:Max\:%5.1lf%S\l
 
 @@ memory
-strings usage
+memory usage
 DEF:my1=<%RRD used_memory.gauge %>:read:AVERAGE
 DEF:my2=<%RRD free_memory.gauge %>:write:AVERAGE
 DEF:my3=<%RRD wasted_memory.gauge %>:write:AVERAGE
