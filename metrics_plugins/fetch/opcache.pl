@@ -35,10 +35,10 @@ my $data = JSON->new->utf8->decode($res->content);
 
 my $config = $data->{config} || {};
 if ( exists $config->{max_accelerated_files} ) {
-    print "meta.$key\t$config->{max_accelerated_files}\t$time\n";
+    print "meta.max_accelerated_files\t$config->{max_accelerated_files}\t$time\n";
 }
 if ( exists $config->{interned_strings_max} ) {
-    print "meta.$key\t$config->{interned_strings_max}MB\t$time\n";
+    print "meta.interned_strings_max\t$config->{interned_strings_max}MB\t$time\n";
 }
 
 for my $key (qw/max_file_size memory_max/) {
