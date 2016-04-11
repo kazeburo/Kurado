@@ -75,21 +75,25 @@ GPRINT:my2:MAX:Max\:%6.1lf\l
 
 @@ gc_c
 GC count [GC/sec]
-DEF:my1=<%RRD young_gc_count.derive %>:ygc_c:AVERAGE
-DEF:my2=<%RRD full_gc_count.derive %>:fgc_c:AVERAGE
+DEF:my1t=<%RRD young_gc_count.derive %>:ygc_c:AVERAGE
+DEF:my2t=<%RRD full_gc_count.derive %>:fgc_c:AVERAGE
+CDEF:my1=my1t,0,100000,LIMIT
+CDEF:my2=my2t,0,100000,LIMIT
 LINE2:my1#d1a2f6:Young Gen
-GPRINT:my1:LAST:Cur\:%6.1lf
-GPRINT:my1:AVERAGE:Ave\:%6.1lf
-GPRINT:my1:MAX:Max\:%6.1lf\l
+GPRINT:my1:LAST:Cur\:%5.3lf
+GPRINT:my1:AVERAGE:Ave\:%5.3lf
+GPRINT:my1:MAX:Max\:%5.3lf\l
 LINE1:my2#7020AF:Full     
-GPRINT:my2:LAST:Cur\:%6.1lf
-GPRINT:my2:AVERAGE:Ave\:%6.1lf
-GPRINT:my2:MAX:Max\:%6.1lf\l
+GPRINT:my2:LAST:Cur\:%5.3lf
+GPRINT:my2:AVERAGE:Ave\:%5.3lf
+GPRINT:my2:MAX:Max\:%5.3lf\l
 
 @@ gc_t
-GC time [Elapsed/sec]
-DEF:my1=<%RRD young_gc_time.derive %>:ygc_t:AVERAGE
-DEF:my2=<%RRD full_gc_time.derive %>:fgc_t:AVERAGE
+GC time [Elapsed/msec]
+DEF:my1t=<%RRD young_gc_time.derive %>:ygc_t:AVERAGE
+DEF:my2t=<%RRD full_gc_time.derive %>:fgc_t:AVERAGE
+CDEF:my1=my1t,0,100000,LIMIT
+CDEF:my2=my2t,0,100000,LIMIT
 LINE2:my1#F0B300:Young Gen
 GPRINT:my1:LAST:Cur\:%6.1lf
 GPRINT:my1:AVERAGE:Ave\:%6.1lf

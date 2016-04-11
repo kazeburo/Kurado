@@ -39,6 +39,7 @@ sub run {
     });
     while ($pm->signal_received ne 'TERM') {
         $pm->start(sub{
+            srand();
             my $mq = Kurado::MQ->new(server => $self->config->redis);
             my $metrics = Kurado::Metrics->new(config => $self->config);
             local $SIG{TERM} = sub {
@@ -49,6 +50,13 @@ sub run {
                 "kurado-update" => sub {
                     my ($topic, $message) = @_;
                     my $gurad = $self->scoreboard->busy;
+                    while(1) {
+                        if ( -f $self->config->data_dir . "/stop" && time - [stat($self->config->data_dir . "/stop")]->[9] < 300 ) {
+                          sleep 1;
+                          next;
+                        }
+                        last;
+                    }
                     $metrics->process_message($message);
                 },
             );
