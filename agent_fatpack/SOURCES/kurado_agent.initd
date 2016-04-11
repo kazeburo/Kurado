@@ -33,7 +33,7 @@ start() {
     $BIN ${MQ:+--mq=$MQ} \
          --pidfile=$PIDFILE \
          $OTHER_OPTS >>$LOGFILE 2>&1 &
-    sleep 3
+    sleep 5
     if ! kill -0 $(cat $PIDFILE 2>/dev/null) >/dev/null 2>&1; then
         failure
         echo

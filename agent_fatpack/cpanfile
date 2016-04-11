@@ -1,8 +1,9 @@
-requires 'perl' => '5.008002';
+requires 'perl' => '5.008005';
 requires 'Getopt::Long';
 requires 'Pod::Usage', '1.63';
 requires 'Cwd::Guard';
-requires 'TOML::Parser';
+requires 'TOML::Parser', '== 0.04';
 requires 'boolean', '0.38';
 requires 'Proc::Pidfile';
+
 
