@@ -60,11 +60,11 @@ if ( $rep_status ) {
         $warn{replication} = $rep_status->{Last_Error};
     }
 
-    $status{replication_second_behind_master} = 
+    $status{replication_second_behind_master} =
         ( exists $rep_status->{Seconds_Behind_Master} && defined $rep_status->{Seconds_Behind_Master} )
         ? $rep_status->{Seconds_Behind_Master} : 'U';
     $status{replication_read_master_log_pos} = $rep_status->{Read_Master_Log_Pos};
-    $status{replication_exec_master_log_pos} = exists $rep_status->{Exec_Master_Log_Pos} 
+    $status{replication_exec_master_log_pos} = exists $rep_status->{Exec_Master_Log_Pos}
         ? $rep_status->{Exec_Master_Log_Pos} : $rep_status->{Exec_master_log_pos};
 
 }
@@ -95,7 +95,9 @@ else {
     if ( my $innodb_status = $engine_row->{Status} ) {
         $variable{innodb} = 1;
         $status{innodb_page_size} = 16384;
-
+        my $spin_waits = 0;
+        my $spin_rounds = 0;
+        my $os_waits = 0;
         for my $line ( split /\n/, $innodb_status ) {
             if ( $line =~ /Number of rows inserted (\d+), updated (\d+), deleted (\d+), read (\d+)/ ){
                 $status{innodb_rows_inserted} = $1;
@@ -137,8 +139,21 @@ else {
             if ( $line =~ m!^(\d+) log i/o's done, ! ) {
                 $status{innodb_log_writes} = $1;
             }
+            if ($line =~ m!^(?:Mutex|RW-(?:shared|sx|excl)) spin waits (\d+), rounds (\d+), OS waits (\d+)! ) {
+                $spin_waits += $1;
+                $spin_rounds += $2;
+                $os_waits += $3;
+            }
+            if ( $line =~ m!^RW-shared spins (\d+), OS waits (\d+); RW-excl spins (\d+), OS waits (\d+)!) {
+                $spin_waits += $1 + $3;
+                $os_waits += $2 + $4;
+            }
+
         } # for
-      
+        $status{innodb_spin_waits} = $spin_waits;
+        $status{innodb_spin_rounds} = $spin_rounds;
+        $status{innodb_os_waits} = $os_waits;
+
     } # status
 }
 
@@ -151,35 +166,36 @@ if ( exists $variable{innodb_buffer_pool_size} ) {
 
 my %meta;
 $meta{uptime} = $status{uptime} || 0;
-$meta{$_} = $variable{$_} for grep { exists $variable{$_} } 
-    qw/version version_comment slow_query_log 
-       log_slow_queries long_query_time 
+$meta{$_} = $variable{$_} for grep { exists $variable{$_} }
+    qw/version version_comment slow_query_log
+       log_slow_queries long_query_time
        log_queries_not_using_indexes max_connections
        max_connect_errors thread_cache_size
        innodb innodb_version innodb_buffer_pool_size innodb_flush_method
        innodb_support_xa innodb_flush_log_at_trx_commit innodb_doublewrite
        innodb_file_per_table innodb_file_format innodb_io_capacity innodb_io_capacity_max
        innodb_page_size
-       replication replication_slave_io_running replication_slave_sql_running 
+       replication replication_slave_io_running replication_slave_sql_running
        replication_master_host replication_master_port
       /;
 delete $meta{log_slow_queries} if exists $meta{log_slow_queries} && exists $meta{slow_query_log};
 
 my %metrics;
-for (qw/created_tmp_tables created_tmp_disk_tables created_tmp_files com_delete 
+for (qw/created_tmp_tables created_tmp_disk_tables created_tmp_files com_delete
         com_insert com_replace com_select com_update slow_queries connections threads_created
         select_full_join select_full_range_join select_range select_range_check select_scan
         sort_merge_passes sort_range sort_rows sort_scan
         innodb_rows_read innodb_rows_deleted innodb_rows_updated innodb_rows_inserted
         innodb_pages_read innodb_pages_created innodb_pages_written
         innodb_data_reads innodb_data_writes innodb_data_fsyncs innodb_log_writes
+        innodb_spin_waits innodb_spin_rounds innodb_os_waits
        /) {
     next if $_ =~ m!^innodb_! && !$meta{innodb};
     next if $_ =~ m!^replication_! && !$meta{replication};
     $metrics{"$_.derive"} = exists $status{$_} ? $status{$_} : 'U';
 }
 for (qw/threads_cached threads_connected threads_running
-        innodb_buffer_pool_hit_rate 
+        innodb_buffer_pool_hit_rate
         innodb_buffer_pool_pages_total innodb_buffer_pool_pages_free
         innodb_buffer_pool_pages_data innodb_buffer_pool_pages_dirty
         replication_second_behind_master replication_read_master_log_pos replication_exec_master_log_pos

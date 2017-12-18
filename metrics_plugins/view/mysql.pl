@@ -81,7 +81,7 @@ sub metrics_list {
     }
     if ( $innodb ) {
         $list .= join("\t",'#MySQL InnoDB'.$port,@innodb)."\n";
-        $list .= "$_\n" for qw/row-ops-rate row-pos-speed cache-rate bp-usage dirty-rate page-io innodb-io/;
+        $list .= "$_\n" for qw/row-ops-rate row-pos-speed cache-rate bp-usage dirty-rate page-io innodb-io innodb-mutex/;
     }
     print $list;
 }
@@ -115,11 +115,11 @@ CDEF:my2r=my2,total,/,100,*
 CDEF:my3r=my3,total,/,100,*
 CDEF:my4r=my4,total,/,100,*
 CDEF:my5r=my5,total,/,100,*
-AREA:my1r#c0c0c0:Select 
+AREA:my1r#c0c0c0:Select
 GPRINT:my1r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my1r:AVERAGE:Ave\:%5.1lf[%%]
 GPRINT:my1r:MAX:Max\:%5.1lf[%%]\l
-STACK:my2r#000080:Insert 
+STACK:my2r#000080:Insert
 GPRINT:my2r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my2r:AVERAGE:Ave\:%5.1lf[%%]
 GPRINT:my2r:MAX:Max\:%5.1lf[%%]\l
@@ -127,11 +127,11 @@ STACK:my3r#008080:Replace
 GPRINT:my3r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my3r:AVERAGE:Ave\:%5.1lf[%%]
 GPRINT:my3r:MAX:Max\:%5.1lf[%%]\l
-STACK:my4r#800080:Update 
+STACK:my4r#800080:Update
 GPRINT:my4r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my4r:AVERAGE:Ave\:%5.1lf[%%]
 GPRINT:my4r:MAX:Max\:%5.1lf[%%]\l
-STACK:my5r#C0C000:Delete 
+STACK:my5r#C0C000:Delete
 GPRINT:my5r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my5r:AVERAGE:Ave\:%5.1lf[%%]
 GPRINT:my5r:MAX:Max\:%5.1lf[%%]\l
@@ -148,11 +148,11 @@ CDEF:my2=my2a,0,1000000000,LIMIT
 CDEF:my3=my3a,0,1000000000,LIMIT
 CDEF:my4=my4a,0,1000000000,LIMIT
 CDEF:my5=my5a,0,1000000000,LIMIT
-AREA:my1#c0c0c0:Select 
+AREA:my1#c0c0c0:Select
 GPRINT:my1:LAST:Cur\:%7.1lf
 GPRINT:my1:AVERAGE:Ave\:%7.1lf
 GPRINT:my1:MAX:Max\:%7.1lf\l
-STACK:my2#000080:Insert 
+STACK:my2#000080:Insert
 GPRINT:my2:LAST:Cur\:%7.1lf
 GPRINT:my2:AVERAGE:Ave\:%7.1lf
 GPRINT:my2:MAX:Max\:%7.1lf\l
@@ -160,11 +160,11 @@ STACK:my3#008080:Replace
 GPRINT:my3:LAST:Cur\:%7.1lf
 GPRINT:my3:AVERAGE:Ave\:%7.1lf
 GPRINT:my3:MAX:Max\:%7.1lf\l
-STACK:my4#800080:Update 
+STACK:my4#800080:Update
 GPRINT:my4:LAST:Cur\:%7.1lf
 GPRINT:my4:AVERAGE:Ave\:%7.1lf
 GPRINT:my4:MAX:Max\:%7.1lf\l
-STACK:my5#C0C000:Delete 
+STACK:my5#C0C000:Delete
 GPRINT:my5:LAST:Cur\:%7.1lf
 GPRINT:my5:AVERAGE:Ave\:%7.1lf
 GPRINT:my5:MAX:Max\:%7.1lf\l
@@ -181,7 +181,7 @@ CDEF:my2=my2a,0,1000000000,LIMIT
 CDEF:my3=my3a,0,1000000000,LIMIT
 CDEF:my4=my4a,0,1000000000,LIMIT
 CDEF:my5=my5a,0,1000000000,LIMIT
-AREA:my1#3d1400:Full Join      
+AREA:my1#3d1400:Full Join
 GPRINT:my1:LAST:Cur\:%7.1lf
 GPRINT:my1:AVERAGE:Ave\:%7.1lf
 GPRINT:my1:MAX:Max\:%7.1lf\l
@@ -189,15 +189,15 @@ STACK:my2#aa3a26:Full Range Join
 GPRINT:my2:LAST:Cur\:%7.1lf
 GPRINT:my2:AVERAGE:Ave\:%7.1lf
 GPRINT:my2:MAX:Max\:%7.1lf\l
-STACK:my3#edaa40:Range          
+STACK:my3#edaa40:Range
 GPRINT:my3:LAST:Cur\:%7.1lf
 GPRINT:my3:AVERAGE:Ave\:%7.1lf
 GPRINT:my3:MAX:Max\:%7.1lf\l
-STACK:my4#13333b:Range Check    
+STACK:my4#13333b:Range Check
 GPRINT:my4:LAST:Cur\:%7.1lf
 GPRINT:my4:AVERAGE:Ave\:%7.1lf
 GPRINT:my4:MAX:Max\:%7.1lf\l
-STACK:my5#686240:Scan           
+STACK:my5#686240:Scan
 GPRINT:my5:LAST:Cur\:%7.1lf
 GPRINT:my5:AVERAGE:Ave\:%7.1lf
 GPRINT:my5:MAX:Max\:%7.1lf\l
@@ -212,19 +212,19 @@ CDEF:my1=my1a,0,1000000000,LIMIT
 CDEF:my2=my2a,0,1000000000,LIMIT
 CDEF:my3=my3a,0,1000000000,LIMIT
 CDEF:my4=my4a,0,1000000000,LIMIT
-AREA:my1#ffab02:Sort Rows        
+AREA:my1#ffab02:Sort Rows
 GPRINT:my1:LAST:Cur\:%7.1lf
 GPRINT:my1:AVERAGE:Ave\:%7.1lf
 GPRINT:my1:MAX:Max\:%7.1lf\l
-LINE1:my2#157418:Sort Ranges      
+LINE1:my2#157418:Sort Ranges
 GPRINT:my2:LAST:Cur\:%7.1lf
 GPRINT:my2:AVERAGE:Ave\:%7.1lf
 GPRINT:my2:MAX:Max\:%7.1lf\l
-LINE1:my3#da4625:Sort Merge Pass  
+LINE1:my3#da4625:Sort Merge Pass
 GPRINT:my3:LAST:Cur\:%7.1lf
 GPRINT:my3:AVERAGE:Ave\:%7.1lf
 GPRINT:my3:MAX:Max\:%7.1lf\l
-LINE1:my4#4345ff:Sort Scan        
+LINE1:my4#4345ff:Sort Scan
 GPRINT:my4:LAST:Cur\:%7.1lf
 GPRINT:my4:AVERAGE:Ave\:%7.1lf
 GPRINT:my4:MAX:Max\:%7.1lf\l
@@ -237,7 +237,7 @@ DEF:my3a=<%RRD_FOR created_tmp_files.derive %>:n:AVERAGE
 CDEF:my1=my1a,0,1000000000,LIMIT
 CDEF:my2=my2a,0,1000000000,LIMIT
 CDEF:my3=my3a,0,1000000000,LIMIT
-AREA:my1#ffab02:Created Tmp Tables     
+AREA:my1#ffab02:Created Tmp Tables
 GPRINT:my1:LAST:Cur\:%6.2lf
 GPRINT:my1:AVERAGE:Ave\:%6.2lf
 GPRINT:my1:MAX:Max\:%6.2lf\l
@@ -245,7 +245,7 @@ LINE1:my2#f51e2f:Created Tmp Disk Tables
 GPRINT:my2:LAST:Cur\:%6.2lf
 GPRINT:my2:AVERAGE:Ave\:%6.2lf
 GPRINT:my2:MAX:Max\:%6.2lf\l
-LINE1:my3#157418:Created Tmp Files      
+LINE1:my3#157418:Created Tmp Files
 GPRINT:my3:LAST:Cur\:%6.2lf
 GPRINT:my3:AVERAGE:Ave\:%6.2lf
 GPRINT:my3:MAX:Max\:%6.2lf\l
@@ -268,15 +268,15 @@ DEF:my4a=<%RRD_FOR threads_created.derive %>:n:AVERAGE
 DEF:my5a=<%RRD_FOR connections.derive %>:n:AVERAGE
 CDEF:my4=my4a,0,1000000000,LIMIT
 CDEF:my5=my5a,0,1000000000,LIMIT
-LINE1:my1#CC0000:Cached           
+LINE1:my1#CC0000:Cached
 GPRINT:my1:LAST:Cur\:%6.1lf
 GPRINT:my1:AVERAGE:Ave\:%6.1lf
 GPRINT:my1:MAX:Max\:%6.1lf\l
-LINE1:my2#000080:Connected        
+LINE1:my2#000080:Connected
 GPRINT:my2:LAST:Cur\:%6.1lf
 GPRINT:my2:AVERAGE:Ave\:%6.1lf
 GPRINT:my2:MAX:Max\:%6.1lf\l
-LINE1:my3#008080:Running          
+LINE1:my3#008080:Running
 GPRINT:my3:LAST:Cur\:%6.1lf
 GPRINT:my3:AVERAGE:Ave\:%6.1lf
 GPRINT:my3:MAX:Max\:%6.1lf\l
@@ -284,7 +284,7 @@ LINE1:my4#00c000:Threads created/s
 GPRINT:my4:LAST:Cur\:%6.2lf
 GPRINT:my4:AVERAGE:Ave\:%6.2lf
 GPRINT:my4:MAX:Max\:%6.2lf\l
-LINE1:my5#ffab02:Connections/s    
+LINE1:my5#ffab02:Connections/s
 GPRINT:my5:LAST:Cur\:%6.2lf
 GPRINT:my5:AVERAGE:Ave\:%6.2lf
 GPRINT:my5:MAX:Max\:%6.2lf\l
@@ -330,7 +330,7 @@ STACK:my3r#008080:Delete
 GPRINT:my3r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my3r:AVERAGE:Ave\:%5.1lf[%%]
 GPRINT:my3r:MAX:Max\:%5.1lf[%%]\l
-STACK:my4r#800080:Read  
+STACK:my4r#800080:Read
 GPRINT:my4r:LAST:Cur\:%5.1lf[%%]
 GPRINT:my4r:AVERAGE:Ave\:%5.1lf[%%]
 GPRINT:my4r:MAX:Max\:%5.1lf[%%]\l
@@ -357,7 +357,7 @@ LINE1:my3#008080:Delete
 GPRINT:my3:LAST:Cur\:%6.1lf
 GPRINT:my3:AVERAGE:Ave\:%6.1lf
 GPRINT:my3:MAX:Max\:%6.1lf\l
-LINE1:my4#800080:Read  
+LINE1:my4#800080:Read
 GPRINT:my4:LAST:Cur\:%6.1lf
 GPRINT:my4:AVERAGE:Ave\:%6.1lf
 GPRINT:my4:MAX:Max\:%6.1lf\l
@@ -376,7 +376,7 @@ Buffer pool usage
 DEF:my1=<%RRD innodb_buffer_pool_pages_total.gauge %>:bp_total:AVERAGE
 DEF:my3=<%RRD innodb_buffer_pool_pages_free.gauge %>:bp_free:AVERAGE
 CDEF:my2=my1,my3,-
-AREA:my1#3d1400:Pool Size 
+AREA:my1#3d1400:Pool Size
 GPRINT:my1:LAST:Cur\:%5.1lf%S\l
 AREA:my2#edaa40:Used Pages
 GPRINT:my2:LAST:Cur\:%5.1lf%S
@@ -406,11 +406,11 @@ LINE1:my1#d6883a:Pages Create
 GPRINT:my1:LAST:Cur\:%6.1lf
 GPRINT:my1:AVERAGE:Ave\:%6.1lf
 GPRINT:my1:MAX:Max\:%6.1lf\l
-LINE1:my2#e6d882:Pages Read  
+LINE1:my2#e6d882:Pages Read
 GPRINT:my2:LAST:Cur\:%6.1lf
 GPRINT:my2:AVERAGE:Ave\:%6.1lf
 GPRINT:my2:MAX:Max\:%6.1lf\l
-LINE1:my3#55ad84:Pages Write 
+LINE1:my3#55ad84:Pages Write
 GPRINT:my3:LAST:Cur\:%6.1lf
 GPRINT:my3:AVERAGE:Ave\:%6.1lf
 GPRINT:my3:MAX:Max\:%6.1lf\l
@@ -425,7 +425,7 @@ CDEF:file_reads=my1,0,100000,LIMIT
 CDEF:file_writes=my2,0,100000,LIMIT
 CDEF:log_writes=my3,0,100000,LIMIT
 CDEF:file_fsyncs=my4,0,100000,LIMIT
-AREA:file_reads#402204:File Reads 
+AREA:file_reads#402204:File Reads
 GPRINT:file_reads:LAST:Cur\: %5.1lf
 GPRINT:file_reads:AVERAGE:Ave\: %5.1lf
 GPRINT:file_reads:MAX:Max\: %5.1lf\l
@@ -433,7 +433,7 @@ STACK:file_writes#B3092B:File Writes
 GPRINT:file_writes:LAST:Cur\: %5.1lf
 GPRINT:file_writes:AVERAGE:Ave\: %5.1lf
 GPRINT:file_writes:MAX:Max\: %5.1lf\l
-STACK:log_writes#FFBF00:Log Writes 
+STACK:log_writes#FFBF00:Log Writes
 GPRINT:log_writes:LAST:Cur\: %5.1lf
 GPRINT:log_writes:AVERAGE:Ave\: %5.1lf
 GPRINT:log_writes:MAX:Max\: %5.1lf\l
@@ -441,3 +441,16 @@ STACK:file_fsyncs#0ABFCC:File Fsyncs
 GPRINT:file_fsyncs:LAST:Cur\: %5.1lf
 GPRINT:file_fsyncs:AVERAGE:Ave\: %5.1lf
 GPRINT:file_fsyncs:MAX:Max\: %5.1lf\l
+
+@@ innodb-mutex
+InnoDB Mutex
+DEF:my1=<%RRD innodb_spin_waits.derive %>:spin:AVERAGE
+DEF:my2=<%RRD innodb_os_waits.derive %>:os:AVERAGE
+LINE1:my1#edaa40:spin_waits
+GPRINT:my1:LAST:Cur\:%6.1lf
+GPRINT:my1:AVERAGE:Ave\:%6.1lf
+GPRINT:my1:MAX:Max\:%6.1lf\l
+LINE1:my2#f51e2f:os_waits
+GPRINT:my2:LAST:Cur\:%6.1lf
+GPRINT:my2:AVERAGE:Ave\:%6.1lf
+GPRINT:my2:MAX:Max\:%6.1lf\l
