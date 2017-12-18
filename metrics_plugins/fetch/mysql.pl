@@ -148,7 +148,14 @@ if ( my $innodb_status = $engine_row->{Status} ) {
     my $spin_rounds = 0;
     my $os_waits = 0;
     for my $line ( split /\n/, $innodb_status ) {
-        if ($line =~ m!^(?:Mutex|RW-(?:shared|sx|excl)) spin waits (\d+), rounds (\d+), OS waits (\d+)! ) {
+        # 5.6
+        if ($line =~ m!^Mutex spin waits (\d+), rounds (\d+), OS waits (\d+)! ) {
+            $spin_waits += $1;
+            $spin_rounds += $2;
+            $os_waits += $3;
+        }
+        # 5.7
+        if ($line =~ m!^RW-(?:shared|sx|excl) spins (\d+), rounds (\d+), OS waits (\d+)! ) {
             $spin_waits += $1;
             $spin_rounds += $2;
             $os_waits += $3;
