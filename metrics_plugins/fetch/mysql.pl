@@ -171,10 +171,11 @@ $meta{$_} = $variable{$_} for grep { exists $variable{$_} }
        log_slow_queries long_query_time
        log_queries_not_using_indexes max_connections
        max_connect_errors thread_cache_size
+       sync_binlog sync_master_info sync_relay_log sync_relay_log_info
        innodb innodb_version innodb_buffer_pool_size innodb_flush_method
        innodb_support_xa innodb_flush_log_at_trx_commit innodb_doublewrite
        innodb_file_per_table innodb_file_format innodb_io_capacity innodb_io_capacity_max
-       innodb_page_size
+       innodb_page_size innodb_adaptive_hash_index
        replication replication_slave_io_running replication_slave_sql_running
        replication_master_host replication_master_port
       /;
