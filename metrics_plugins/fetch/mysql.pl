@@ -46,6 +46,12 @@ foreach my $variable_row ( @$varible_rows ) {
     $variable{lc($variable_row->{Variable_name})} = $variable_row->{Value};
 }
 
+# MySQL 4 Innodb or no Innodb
+my $engine_row = eval {
+    local $dbh->{PrintError} = 0;
+    $dbh->selectrow_hashref('show /*!50000 ENGINE*/ innodb status',undef);
+};
+
 ## replication
 my $sth = $dbh->prepare('show slave status');
 $sth->execute();
@@ -73,6 +79,7 @@ if ( $rep_status ) {
 ## innodb
 $variable{innodb} = 0;
 $variable{innodb_flush_method} ||= 'fdatasync';
+
 if ( exists $status{innodb_page_size} ) {
     # MySQL 5 Innodb
     $variable{innodb} = 1;
@@ -87,17 +94,10 @@ if ( exists $status{innodb_page_size} ) {
 
 }
 else {
-    # MySQL 4 Innodb or no Innodb
-    my $engine_row = eval {
-        local $dbh->{PrintError} = 0;
-        $dbh->selectrow_hashref('show /*!50000 ENGINE*/ innodb status',undef);
-    };
     if ( my $innodb_status = $engine_row->{Status} ) {
         $variable{innodb} = 1;
         $status{innodb_page_size} = 16384;
-        my $spin_waits = 0;
-        my $spin_rounds = 0;
-        my $os_waits = 0;
+
         for my $line ( split /\n/, $innodb_status ) {
             if ( $line =~ /Number of rows inserted (\d+), updated (\d+), deleted (\d+), read (\d+)/ ){
                 $status{innodb_rows_inserted} = $1;
@@ -139,22 +139,28 @@ else {
             if ( $line =~ m!^(\d+) log i/o's done, ! ) {
                 $status{innodb_log_writes} = $1;
             }
-            if ($line =~ m!^(?:Mutex|RW-(?:shared|sx|excl)) spin waits (\d+), rounds (\d+), OS waits (\d+)! ) {
-                $spin_waits += $1;
-                $spin_rounds += $2;
-                $os_waits += $3;
-            }
-            if ( $line =~ m!^RW-shared spins (\d+), OS waits (\d+); RW-excl spins (\d+), OS waits (\d+)!) {
-                $spin_waits += $1 + $3;
-                $os_waits += $2 + $4;
-            }
-
         } # for
-        $status{innodb_spin_waits} = $spin_waits;
-        $status{innodb_spin_rounds} = $spin_rounds;
-        $status{innodb_os_waits} = $os_waits;
-
     } # status
+}
+
+if ( my $innodb_status = $engine_row->{Status} ) {
+    my $spin_waits = 0;
+    my $spin_rounds = 0;
+    my $os_waits = 0;
+    for my $line ( split /\n/, $innodb_status ) {
+        if ($line =~ m!^(?:Mutex|RW-(?:shared|sx|excl)) spin waits (\d+), rounds (\d+), OS waits (\d+)! ) {
+            $spin_waits += $1;
+            $spin_rounds += $2;
+            $os_waits += $3;
+        }
+        if ( $line =~ m!^RW-shared spins (\d+), OS waits (\d+); RW-excl spins (\d+), OS waits (\d+)!) {
+            $spin_waits += $1 + $3;
+            $os_waits += $2 + $4;
+        }
+    }
+    $status{innodb_spin_waits} = $spin_waits;
+    $status{innodb_spin_rounds} = $spin_rounds;
+    $status{innodb_os_waits} = $os_waits;
 }
 
 if ( exists $variable{innodb_buffer_pool_size} ) {
