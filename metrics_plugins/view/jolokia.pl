@@ -110,7 +110,7 @@ DEF:my2=<%RRD heap_memory_usage.committed.gauge %>:m_h_comt_s:AVERAGE
 DEF:my3=<%RRD heap_memory_usage.used.gauge %>:m_h_used_s:AVERAGE
 GPRINT:my1:LAST:Max\: %6.1lf%S\l
 AREA:my2#afffb2:Committed
-GPRINT:my2:LAST:Cur\:%6.1lf%S
+GPRINT:my2:LAST:Cur\:%6.1lf%s
 GPRINT:my2:AVERAGE:Ave\:%6.1lf%S
 GPRINT:my2:MAX:Max\:%6.1lf%S\l
 LINE1:my2#00A000
@@ -144,7 +144,7 @@ DEF:my2=<%RRD memory_pool.eden.committed.gauge %>:mp_eden_comt_s:AVERAGE
 DEF:my3=<%RRD memory_pool.eden.used.gauge %>:mp_eden_used_s:AVERAGE
 GPRINT:my1:LAST:Max\: %6.1lf%S\l
 AREA:my2#afffb2:Committed
-GPRINT:my2:LAST:Cur\:%6.1lf%S
+GPRINT:my2:LAST:Cur\:%6.1lf%s
 GPRINT:my2:AVERAGE:Ave\:%6.1lf%S
 GPRINT:my2:MAX:Max\:%6.1lf%S\l
 LINE1:my2#00A000
@@ -161,7 +161,7 @@ DEF:my2=<%RRD memory_pool.surv.committed.gauge %>:mp_surv_comt_s:AVERAGE
 DEF:my3=<%RRD memory_pool.surv.used.gauge %>:mp_surv_used_s:AVERAGE
 GPRINT:my1:LAST:Max\: %6.1lf%S\l
 AREA:my2#afffb2:Committed
-GPRINT:my2:LAST:Cur\:%6.1lf%S
+GPRINT:my2:LAST:Cur\:%6.1lf%s
 GPRINT:my2:AVERAGE:Ave\:%6.1lf%S
 GPRINT:my2:MAX:Max\:%6.1lf%S\l
 LINE1:my2#00A000
@@ -178,7 +178,7 @@ DEF:my2=<%RRD memory_pool.old.committed.gauge %>:mp_old_comt_s:AVERAGE
 DEF:my3=<%RRD memory_pool.old.used.gauge %>:mp_old_used_s:AVERAGE
 GPRINT:my1:LAST:Max\: %6.1lf%S\l
 AREA:my2#afffb2:Committed
-GPRINT:my2:LAST:Cur\:%6.1lf%S
+GPRINT:my2:LAST:Cur\:%6.1lf%s
 GPRINT:my2:AVERAGE:Ave\:%6.1lf%S
 GPRINT:my2:MAX:Max\:%6.1lf%S\l
 LINE1:my2#00A000
@@ -195,7 +195,7 @@ DEF:my2=<%RRD memory_pool.perm.committed.gauge %>:mp_perm_comt_s:AVERAGE
 DEF:my3=<%RRD memory_pool.perm.used.gauge %>:mp_perm_used_s:AVERAGE
 GPRINT:my1:LAST:Max\: %6.1lf%S\l
 AREA:my2#73b675:Committed
-GPRINT:my2:LAST:Cur\:%6.1lf%S
+GPRINT:my2:LAST:Cur\:%6.1lf%s
 GPRINT:my2:AVERAGE:Ave\:%6.1lf%S
 GPRINT:my2:MAX:Max\:%6.1lf%S\l
 LINE1:my2#3d783f

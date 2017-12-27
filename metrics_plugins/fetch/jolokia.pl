@@ -62,10 +62,10 @@ my $time = time;
     my $value = $data->{value};
     my($ygc_c, $ygc_t, $fgc_c, $fgc_t) = ('U', 'U', 'U', 'U');
     for my $collector (keys %$value) {
-        if ($collector =~ /name=(?:PS Scavenge|ParNew)/) {
+        if ($collector =~ /name=(?:PS Scavenge|ParNew|G1 Young Generation)/) {
             $ygc_c = $value->{$collector}{CollectionCount};
             $ygc_t = $value->{$collector}{CollectionTime};
-        } elsif ($collector =~ /name=(?:PS MarkSweep|ConcurrentMarkSweep)/) {
+        } elsif ($collector =~ /name=(?:PS MarkSweep|ConcurrentMarkSweep|G1 Old Generation)/) {
             $fgc_c = $value->{$collector}{CollectionCount};
             $fgc_t = $value->{$collector}{CollectionTime};
         }

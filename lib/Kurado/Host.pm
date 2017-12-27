@@ -137,7 +137,7 @@ sub parse_metrics_list {
             $line =~ s!^# *!!g;
             $line =~ s! *$!!g;
             my ($label, @args) = split /\t/,$line;
-            die "odd number of metrics_list meta in '# $line'" if @args % 2;
+            #die "odd number of metrics_list meta in '# $line'" if @args % 2;
             my @meta;
             while ( @args ) {
                 my $key = shift(@args);

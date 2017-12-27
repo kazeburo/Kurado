@@ -23,6 +23,11 @@ my $client = Kurado::TinyTCP->new(
 $client->write("stats$CRLF",1);
 my $raw_stats = $client->read(1);
 die "could not retrieve status from $host:$port" unless $raw_stats;
+while ( $raw_stats !~ m!END! ) {
+  my $raw_buf = $client->read(1);
+  die "could not retrieve status from $host:$port" unless $raw_buf;
+  $raw_stats .= $raw_buf;
+}
 
 my %stats;
 foreach my $line ( split /\r?\n/, $raw_stats ) {
@@ -42,6 +47,12 @@ if ( exists $stats{uptime} ) {
 if ( $stats{version} && $stats{version} =~ m!^1\.(\d+)! && $1 >= 4 ) {
     $client->write("stats settings$CRLF");
     my $raw_setting_stats = $client->read(1);
+    die "could not retrieve status from $host:$port" unless $raw_setting_stats;
+    while ( $raw_setting_stats !~ m!END! ) {
+      my $raw_buf = $client->read(1);
+      die "could not retrieve status from $host:$port" unless $raw_buf;
+      $raw_setting_stats .= $raw_buf;
+    }
     my %setting_stats;
     foreach my $line ( split /\r?\n/, $raw_setting_stats ) {
         if ( $line =~ /^STAT\s([^ ]+)\s(.+)$/ ) {

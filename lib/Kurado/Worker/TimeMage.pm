@@ -18,6 +18,7 @@ __PACKAGE__->meta->make_immutable();
 
 sub run {
     my $self = shift;
+    sleep 3; # 0秒を避ける
     my $hosts = $self->config_loader->hosts;
     my $mq = Kurado::MQ->new( server => $self->config_loader->config->redis );
     for my $adrs ( keys %$hosts ) {

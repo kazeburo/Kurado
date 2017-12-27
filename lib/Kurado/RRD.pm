@@ -129,7 +129,7 @@ sub graph {
             $xgrid = 'MINUTE:10:MINUTE:30:MINUTE:30:0:%H:%M';
         }
         elsif ( $diff < 4 * 24 * 60 * 60 ) {
-            $xgrid = 'HOUR:6:DAY:1:HOUR:6:0:%H:%M';
+            $xgrid = 'HOUR:1:DAY:1:HOUR:2:0:%H:%M';
         }
         elsif ( $diff < 14 * 24 * 60 * 60) {
             $xgrid = 'DAY:1:DAY:7:DAY:2:0:%m/%d';

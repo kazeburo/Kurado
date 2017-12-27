@@ -59,8 +59,10 @@ GPRINT:my2:MAX:Max\:%8.0lf\l
 
 @@ ios
 iOS
-DEF:my1=<%RRD ios_push_success.counter %>:read:AVERAGE
-DEF:my2=<%RRD ios_push_error.counter %>:read:AVERAGE
+DEF:my1a=<%RRD ios_push_success.counter %>:read:AVERAGE
+DEF:my2a=<%RRD ios_push_error.counter %>:read:AVERAGE
+CDEF:my1=my1a,0,10000,LIMIT
+CDEF:my2=my2a,0,10000,LIMIT
 AREA:my2#990000:Error  
 GPRINT:my2:LAST:Cur\:%6.1lf
 GPRINT:my2:AVERAGE:Ave\:%6.1lf
@@ -89,8 +91,10 @@ GPRINT:my1r:MAX:Max\:%5.1lf[%%]\l
 
 @@ android
 Android
-DEF:my1=<%RRD android_push_success.counter %>:read:AVERAGE
-DEF:my2=<%RRD android_push_error.counter %>:read:AVERAGE
+DEF:my1a=<%RRD android_push_success.counter %>:read:AVERAGE
+DEF:my2a=<%RRD android_push_error.counter %>:read:AVERAGE
+CDEF:my1=my1a,0,10000,LIMIT
+CDEF:my2=my2a,0,10000,LIMIT
 AREA:my2#990000:Error  
 GPRINT:my2:LAST:Cur\:%6.1lf
 GPRINT:my2:AVERAGE:Ave\:%6.1lf

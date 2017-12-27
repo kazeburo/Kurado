@@ -53,7 +53,8 @@ GPRINT:my1:MAX:Max\:%5.1lf\l
 
 @@ cgo
 cgo call per seconds
-DEF:my1=<%RRD cgo_call_num.counter %>:read:AVERAGE
+DEF:my1a=<%RRD cgo_call_num.counter %>:read:AVERAGE
+CDEF:my1=my1a,0,100000,LIMIT
 LINE2:my1#004080:cgo call/sec
 GPRINT:my1:LAST:Cur\:%5.1lf
 GPRINT:my1:AVERAGE:Ave\:%5.1lf
@@ -61,7 +62,8 @@ GPRINT:my1:MAX:Max\:%5.1lf\l
 
 @@ gc
 gc per seconds
-DEF:my1=<%RRD gc_num.counter %>:read:AVERAGE
+DEF:my1a=<%RRD gc_num.counter %>:read:AVERAGE
+CDEF:my1=my1a,0,10000,LIMIT
 LINE2:my1#800040:gc/sec
 GPRINT:my1:LAST:Cur\:%5.1lf
 GPRINT:my1:AVERAGE:Ave\:%5.1lf
@@ -77,8 +79,10 @@ GPRINT:my1:MAX:Max\:%5.1lf%sB\l
 
 @@ malloc
 memory malloc / free
-DEF:my1=<%RRD memory_mallocs.counter %>:read:AVERAGE
-DEF:my2=<%RRD memory_frees.counter %>:read:AVERAGE
+DEF:my1a=<%RRD memory_mallocs.counter %>:read:AVERAGE
+DEF:my2a=<%RRD memory_frees.counter %>:read:AVERAGE
+CDEF:my1=my1a,0,1000000,LIMIT
+CDEF:my2=my2a,0,1000000,LIMIT
 LINE2:my1#de4446:malloc
 GPRINT:my1:LAST:Cur\:%5.1lf
 GPRINT:my1:AVERAGE:Ave\:%5.1lf
